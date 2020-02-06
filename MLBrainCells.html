@@ -1,0 +1,549 @@
+
+<html>
+<body>
+<canvas width="320" height="240" id="canvas" class="canvas"></canvas>
+<script>
+const consoleStyling = 'font-weight: bold; font-size: 50px;color: red; text-shadow: 3px 3px 0 rgb(217,31,38) , 6px 6px 0 rgb(226,91,14) , 9px 9px 0 rgb(245,221,8) , 10px 10px 0 rgb(5,148,68) , 12px 12px 0 rgb(2,135,206) , 13px 13px 0 rgb(4,77,145) , 14px 14px 0 rgb(42,21,113)';
+const canvas = document.querySelector('canvas');
+const ctx = canvas.getContext('2d');
+const width = canvas.width = window.innerWidth;
+const height = canvas.height = window.innerHeight;
+const uniuqeKey=makeID();
+const colorR = colorRotate();
+ctx.fillStyle = 'rgb(250, 250, 250)';
+ctx.fillRect(0, 0, width, height);
+function createBrain(cellRowCount, cellColumnCount, options)
+	{
+	var cellRow = cellRowCount;
+	var cellColumn = cellColumnCount;	
+	const offSetY =  35;	
+	const offSetX =   32;
+	const scaleValX = width/cellColumnCount - offSetX;
+	const scaleValY = height/(cellRowCount)-offSetY;;
+	let cellArray = [];		
+	let brain = 
+		{
+		cellCount:cellRowCount*cellColumnCount,
+		cellColumns:cellColumnCount,
+		cellRows:cellRowCount,
+		scaleValX:scaleValX,
+		scaleValY:scaleValY,
+		offSetX:offSetX,
+		offSetY:offSetY,
+		displayBrain: function()
+			{	
+			ctx.fillStyle = "white";
+			ctx.fillRect(0, 0, width, height);
+			for(let w=0;w<brain.cellColumns; w++)
+				{
+				for(var y=0;y<brain.cellArray.length;y++)
+					{
+					if(w > 0)
+						{
+						for(let v=0;v<(brain.cellArray[y].targets.length);v++)
+							{
+							let targetCell = brain.cellArray[y].targets[v];
+							brain.cellArray[y].drawLineToTarget(targetCell, v);
+						}
+					}
+					if(brain.cellArray[y].answerBool)
+						{
+						brain.cellArray[y].drawSelf();
+						brain.cellArray[y].textAnswer();
+					}
+					else
+						{
+						brain.cellArray[y].drawSelf();
+					}
+				}
+			}
+		},
+		updateForward: function()
+			{
+			for(let a=0; a<brain.cellArray.length;a++)
+				{
+				brain.cellArray[a].calculateSelf();	
+				brain.cellArray[a].propagateActivationUpdate();
+			}	
+		},
+		clearView:function()
+			{
+			ctx.fillStyle = colorR.next();
+			ctx.fillRect(0,0,width,height);
+		},
+		train: function(data)
+			{
+			console.log(typeof data.questions);
+			console.log(typeof data.answers);
+			console.log("train test");	
+		},
+		testInput: function(inputActivation)
+			{
+			let iniColumn = brain.cellArray.filter(x=>x.generation == 0);
+			let randomIndex = getRandomInt(iniColumn.length);
+			iniColumn[randomIndex].activations.push(inputActivation);
+			iniColumn[randomIndex].weights.push(inputActivation/-inputActivation);
+			brain.cellArray.splice(brain.cellArray.indexOf(brain.cellArray.find(x=>x.ID === iniColumn[randomIndex].ID)),1,iniColumn[randomIndex]);
+		}
+	};
+	for(let i=0; i<cellColumn; i++)
+		{
+		for(let j=0;j<cellRow; j++)
+			{
+			let cellPosition= {x:(i*scaleValX)+offSetX, y:(j*scaleValY)+offSetY};
+			if(i == 0)
+				{
+				//the first row - should replace this with a better generator	
+				let activations = [];
+				let act = Math.random();
+				activations.push(act);
+				let weights = [];
+				let weight = Math.random();
+				weights.push(weight);
+				var cell = MakeNewCell(activations, weights, Math.random(), i, j, cellPosition, cellArray);
+			}
+			else if(i==cellColumnCount-1)
+				{
+				cellRow=options.answers.length;
+				let activations =[];
+				let act = i;
+				activations.push(act);
+				let previousGeneration = i-1;
+				let lastCellColumn = cellArray.filter( x=> x.generation == previousGeneration);
+				let lastCellColumnLength = lastCellColumn.length;
+				cell = MakeNewCell(lastCellColumn.map(x=>x.value), createRandomWeights(lastCellColumnLength), getRandom(0,0.001),  i, j,cellPosition, cellArray);
+				cell.answerBool = true;
+			}
+			else{
+				let previousGeneration = i-1;
+				let lastCellColumn = cellArray.filter( x=> x.generation == previousGeneration);
+				let lastCellColumnLength = lastCellColumn.length;
+				cell = MakeNewCell(lastCellColumn.map(x=>x.value), createRandomWeights(lastCellColumnLength), getRandom(0,0.001),  i, j,cellPosition, cellArray);
+			}
+			cellArray.push(cell);
+		}	
+	}
+	PLog("cell array at the end of the day is:L");
+	brain.inputlayer = "";
+	brain.cellArray = cellArray;
+	console.log(brain.cellArray);
+	return brain;
+}
+function createRandomWeights(number)
+	{
+	let array = [];
+	for(let a=0; a<number;a++)
+		{
+		let randoNum = Math.random();
+		if(Math.random()>0.5)
+			{
+			randoNum*=(-1);
+		}
+		array.push(randoNum);
+	}	
+	return  array;
+}
+function MakeNewCell(activations, weights, bias, generation, order, position, array)
+	{
+	var	 cell = 
+		{
+		activations:activations,
+		weights:weights,
+		bias:bias,
+		generation:generation,
+		order:order,
+		nextGenerationTargetKeys:[],
+		answerBool: false,
+		position:position,
+		totalValue: function()
+			{
+			let result = 0;
+			try
+				{
+				if(cell.activations.length == 0)
+					{
+					return 0;	
+				}
+			}
+			catch
+				{
+				cell.activations = [0];
+			}
+			for(let z=0; z<cell.activations.length; z++)
+				{
+				result += cell.activations[z]*cell.weights[z];
+			}
+			result = (result + bias);	
+			result = Sigmoid(result);
+			return result;
+		},
+		calculateSelf:function()
+			{
+			let result = 0;	
+			for(let z=0; z<cell.activations.length; z++)
+				{
+				if(cell.generation > 0)
+					{
+					result += cell.activations[z]*cell.weights[z];
+				}
+				else
+					{
+					result += cell.activations[z];
+				}
+			}
+			result = (result + bias);
+			result = Sigmoid(result);
+			cell.value = result;
+			cell.radius = result*30;
+		},
+		propagateActivationUpdate:function()
+			{
+			let lastgenerationVal = Math.max(array.generation);
+			if(lastgenerationVal == cell.generation)
+				{
+				return true;
+			}
+			for(let i=0; i < cell.nextGenerationTargetKeys.length; i++)
+				{
+				let  nextTarget = cell.nextGenerationTargetKeys[i];
+				let correctCellIndex = brain.cellArray[cell.nextGenerationTargetKeys[i]].ID;//will have to fix
+
+				if(correctCellIndex != -1)
+					{
+					brain.cellArray[correctCellIndex].setActivationWithIndex(cell.getValue(), cell.getOrder());
+				}
+				else{console.error(correctCellIndex);}
+			}
+		},
+		drawSelf: function()
+			{
+			cell.calculateSelf(); //out 	
+	   		ctx.beginPath();
+	   		let coloring = Colors(cell.value, 'cell');
+	   		let A = Math.floor(convertToRange(cell.value, [0,1], [0,10]));
+	   		ctx.fillStyle = coloring;
+		    ctx.strokeStyle = "black";
+		    ctx.arc(cell.position.x, cell.position.y, cell.getRadius(), 0, 2 * Math.PI, false);
+		    let biasVal = Math.floor(convertToRange(cell.bias,[-1,1],[0,10]));
+     	 	ctx.lineWidth = 10 - biasVal;
+     		ctx.fill();
+     		ctx.stroke();
+     		ctx.font= "10px arial";
+     		ctx.fillStyle = "black";
+     		let testWeights = cell.calculateWeights();
+			let text = "A:"+A
+			let text3 = "B:"+biasVal;
+     		ctx.fillText(text, cell.position.x, cell.position.y+20);
+     		ctx.fillText(text3, cell.position.x, cell.position.y);
+		},
+		drawLineToTarget: function(target, index)
+			{
+			let targetWeight = cell.weights[index];
+			let colorWeight = convertToRange(targetWeight, [-1,1],[0,1]);
+			let thicknessOfLine = Math.floor(convertToRange(targetWeight, [-1,1], [0,9]));
+			let coloringSynapse = Colors(colorWeight, 'synapse');
+			ctx.lineWidth = thicknessOfLine;
+			ctx.strokeStyle = coloringSynapse;
+	   		ctx.beginPath();
+			ctx.moveTo(
+				cell.position.x-cell.radius, //x
+				cell.position.y//y
+			);	
+			
+			ctx.lineTo(target.x+target.radius , target.y);
+			ctx.stroke();
+		},
+		textAnswer:function()
+			{
+			let Answer = "I DONT KNOW";	
+			let colorText = "black";
+			if(cell.value < 0.5)
+				{
+				Answer = "NO";
+				colorText = "white";				
+			}
+			else if(cell.value >= 0.6)
+				{Answer = "YES";}
+			ctx.lineWidth = 2;
+     		let answerText2 = this.getBias();
+     		ctx.fillText(Answer , cell.position.x+320, cell.position.y+600);
+     		ctx.fillText( "node:"+cell.ID, cell.position.x+320, cell.position.y+630);
+		},
+		calculateValue()
+			{
+			let cv = 0;
+			if(cell.getActivations().length != cell.getWeights().length)
+				{
+				return cv;
+			}
+			for(let y=0;cell.activations.length; y++)
+				{
+				cv += cell.activations[y]*cell.weights[y];
+			}
+			cv+=cell.getBias();
+			cv = sigmoid(cv);
+			this.value = cv;
+			return cv;
+		}
+		,
+		calculateWeights()
+			{
+			let cw = 0;
+			try{	
+			for(let u=0;u<cell.weights.length; u++)
+				{
+				cw+=cell.weights[u];
+			}
+			return cw;}
+			catch(e){
+				console.log(e);
+				return "not a value";
+			}
+		},
+		calculateActivations: function()
+			{
+			let ca = 0;	
+			for(let t=0;t<cell.activations.length; t++)
+				{
+				ca+=cell.activations[t];
+			}
+			return ca;
+		},
+		setId: function()
+			{
+			this.ID = uniuqeKey.next().value;
+		},
+		setActivations: function(input)
+			{
+			this.activations = input;	
+		},
+		setActivationWithIndex: function(input, index)
+			{
+			this.activations[index] = input;
+		},
+		getActivations:function()
+			{
+			return this.activations;	
+		},
+		getBias: function()
+			{
+			return this.bias;
+		},
+		getWeights: function()
+			{
+			return this.weights;
+		},
+		setWeights: function(value)
+			{
+			this.weights = value;
+		},
+		randomizeWeights:function()
+			{
+			for(let a=0;a<this.weights.length;a++)
+				{
+				let target = this.targets[a];
+				this.weights[a] = Math.random(-1,1);	
+				this.drawLineToTarget(target,a, this.weights[a]);
+			}
+		},
+		adjustWeights:function(index, value)
+			{
+			this.weights[index] = value;
+		},
+		getValue:function()
+			{
+			return this.value;	
+		},
+		getOrder:function()
+			{
+			return this.order;	
+		},
+		setValueOverRide: function(val)
+			{
+			this.value = val;
+			},
+		adjustBias:function(num, calcFlag)
+			{
+			this.bias = num;
+			if(calcFlag)
+				{
+				this.drawSelf();
+			}	
+		},
+		getRadius:function()
+			{
+			return this.value * 50;
+		}	
+	};
+	let value = cell.totalValue(); 
+	cell.value = value;
+	cell.radius = cell.getRadius();
+	cell.targets = [];
+	cell.setId();
+	if(cell.generation > 0)
+		{
+		let lastGen = array.filter(x=>x.generation === cell.generation-1);
+		for(let r=0;r<lastGen.length;r++)
+			{
+			let posObject = lastGen[r].position;
+			posObject.radius = lastGen[r].radius;
+			lastGen[r].nextGenerationTargetKeys.push(cell.ID);
+			cell.targets.push(posObject);
+		}
+	}
+	return cell;	
+}
+function* makeID()
+	{
+	let itters = 0
+	while(true)
+		{
+		yield itters++;
+	}
+}
+function Sigmoid(number)
+	{
+	let answer = 1/ (1+ Math.pow ( Math.E, ((-1)*number) ) );
+	return answer;
+}
+function getRandom(min, max) 
+	{
+  	return Math.random() * (max - min) + min;
+}
+function Colors(brightness, type)
+	{
+	let brightVal = convertToRange(brightness, [0,1],[0,250]);	
+	let brightType = "LIGHT";
+	if(brightVal<150)
+		{
+		brightType = "DARK";
+	}
+   	switch(type)
+   		{
+   		case 'cell':
+   			if(brightType=="LIGHT")
+   				{
+   				color = "white"; 
+   			}
+   			else
+   				{
+   				color = "grey";
+   			}
+   				break;		
+   		case 'synapse':
+   				if(brightType=="DARK")
+   				{
+   				color = "rgb(255,"+Math.floor(brightVal/4)+","+Math.floor(brightVal/4)+")"; 
+   			}
+   			else
+   				{
+   				color = "rgb("+Math.floor(brightVal/2)+","+Math.floor(brightVal/2)+",255)"; 
+   			} 
+   		  	break;
+   	}
+		return color;
+}
+function convertToRange(value, sR, dR)
+	{		
+  	if (value < sR[0] || value > sR[1])
+  		{
+  		console.trace(value);	
+  		console.log(value+"val is");
+  	  	return NaN; 
+  	}
+  	let sM = sR[1] - sR[0];
+  	let dM = dR[1] - dR[0];
+  	let adjValue = value - sR[0];
+  	let result = (adjValue * dM / sM) + dR[0];
+  	return result;
+}
+function getRandomInt(max) 
+	{
+	let result = Math.floor(Math.random() * Math.floor(max)); 	
+  	return result;
+}
+function PLog(logthing)
+	{
+	console.log("%c "+logthing, consoleStyling);
+}
+function* colorRotate()
+	{
+	const color = ['red', 'green', 'blue'];
+	let garsvn = 0;	
+	while(true)
+		{
+		garsvn++;
+		if(garsvn >= 3 ) garsvn = 0;	
+		yield color[garsvn];
+	}
+}
+let mode = {
+	growRate:2,
+	randomSeed: "upcomingIdea", // it will vary the order count according to generation
+	answers:["NO", "I Don't Know", "Yes"], //last array still working on the details - placeholder
+	input:[], //defined as [number, {interface}] where interface... magic?
+}
+let brain = createBrain(9,16, mode);
+window.onload = function()
+	{	
+	brain.displayBrain();
+	const trainingData = 
+		{
+		input: [],
+		answers:[]
+	};
+	window.addEventListener('click', function()
+		{
+		brain.testInput(Math.random(-1,1));
+		brain.updateForward();
+		brain.displayBrain();
+	//	brain.train(); this won't end up in an on click event... or we could just live with it taking forever
+	});
+	var isShift = false;
+	window.addEventListener('keypress', (event)=>
+		{
+		PLog(event.key)	
+		const keyNumber = event.keyCode;
+		const keyName = event.key;
+		const isNumber = isFinite(keyName);
+			if(isNumber)
+				{
+				try{
+					let targetGen = brain.cellArray.filter(x=>x.generation == keyName);
+					console.log(targetGen);
+					for(let g=0;g<targetGen.length;g++)
+						{
+						console.log("adjusting the bias");	
+						console.log(targetGen);
+						brain.cellArray.find(x=> x.ID === targetGen[g].ID).adjustBias(Math.random(-1,1), true);
+					}
+				}
+				catch(e)
+					{
+					console.error(e);
+				}
+			}
+			else
+				{
+				if(keyNumber >96 && keyNumber < 122)
+					{
+					var keyNum = keyNumber - 97;	
+					PLog(keyNum+" generation targeted");
+					try{
+						let  targetGenWeights = brain.cellArray.filter(x=>x.generation == keyNum);
+						for(let h=0;h<targetGenWeights.length;h++)
+							{
+							brain.cellArray.find(x=> x.ID === targetGenWeights[h].ID).randomizeWeights();
+						}
+					}
+					catch(e){console.error(e);}
+				}
+			}
+		},false);
+}
+</script>
+	<div id="container">
+	</div>
+
+	</body>
+</html>
