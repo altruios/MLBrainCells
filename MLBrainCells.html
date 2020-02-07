@@ -469,7 +469,7 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 				weights:this.weights,
 				bias:this.bias
 			}
-
+			let error =(1/2)*Math.pow(cell.value-answerValue,2);
 			for(let k = 0; k< this.weights.length; k++)
 				{
 				let desiredWeight = this.weights[k];	
@@ -502,20 +502,24 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 			//that was this object - simple stuff, now we need to call this function
 			if(returnArray.length > 0)
 				{
-				try{
-					let old = returnArray.find(x=>x.ID === desiredObjectChange.ID);
-					if(old)
+				let old = returnArray.find(x=>x.ID === desiredObjectChange.ID);
+				if(old)
+					{
+					old.bias/=desiredObjectChange.bias*2;	
+					for(let o=0;o<desiredObjectChange.weights.length;o++)
 						{
-						old.bias/=desiredObjectChange.bias*2;	
-						for(let o=0;o<desiredObjectChange.weights.length;o++)
-							{
-							old.weights[o]/=desiredObjectChange.weights[o]*2;
-							}
-						}
-
-				}catch(e){console.log(e+"could not find");}
+						old.weights[o]/=desiredObjectChange.weights[o]*2;
+					}
+				}
+				else
+					{
+					returnArray.push(desiredObjectChange);
+				}
 			}
-			returnArray.push(desiredObjectChange);
+			else
+				{
+				returnArray.push(desiredObjectChange);
+			}
 			let lastGen = brain.cellArray.filter(x=>x.generation === this.generation-1);
 			let lgl = lastGen.length;
 			if(returnArray == brain.cellArray.length)
@@ -523,7 +527,6 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 				//end of recursion - we are done down this tree	
 				return returnArray;
 			}
-
 			else if(cell.order == brain.cellArray.filter(x=>x.generation ===cell.generation).length)
 				{
 				return true;
@@ -644,7 +647,21 @@ function* colorRotate()
 		yield color[garsvn];
 	}
 }
-
+function arrayMultiply(array1, array2)
+	{
+	let result = 0;	
+	let length = array1.length;
+	if(array2.length !=length)
+		{
+		console.error("somethingw went amiss here");	
+		return result;
+	}	
+	for(let a=0; a<length;a++)
+		{
+		result+= array1[a]*array2[a];
+	}
+	return result;
+}
 
 let mode = {
 	growRate:2,
