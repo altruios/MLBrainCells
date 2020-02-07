@@ -415,12 +415,21 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 		},
 		randomizeWeights:function()
 			{
+			PLog(this.ID);	
+			console.table(this.weights);
+			console.log("weights go in up top, down below are changes");
 			for(let a=0;a<this.weights.length;a++)
 				{
 				let target = this.targets[a];
-				this.weights[a] = Math.random(-1,1);	
+				let randomSign = 1;
+				if(Math.random() > 0.5)
+					{
+					randomSign = -1;
+				}
+				this.weights[a] = Math.random(0,1)*randomSign;	
 				this.drawLineToTarget(target,a, this.weights[a]);
 			}
+			console.table(this.weights);
 		},
 		adjustWeights:function(index, value)
 			{
@@ -654,7 +663,7 @@ window.onload = function()
 	};
 	window.addEventListener('click', function()
 		{
-		brain.testInput(Math.random(-1,1));
+		brain.testInput(0);
 		brain.updateForward();
 		brain.displayBrain();
 	//	brain.train(); this won't end up in an on click event... or we could just live with it taking forever
