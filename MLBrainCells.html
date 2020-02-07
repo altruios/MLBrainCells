@@ -76,6 +76,29 @@ function createBrain(cellRowCount, cellColumnCount, options)
 			console.log(typeof data.questions);
 			console.log(typeof data.answers);
 			console.log("train test");	
+			// we we take in the training data, it should come in the form of an of an array of object with two properties, inputs, desired answers.
+			// we need to look at each answer neuorn - LookBack should be a recursive called function that calles itself on an cell in a previous generation/order
+			for (let b=0; b< data.length; b++)// for the length of the training data - I.E. we are going assume we are getting many relativly shortly indexed arrays
+				{
+				if(data[b].questions.length != data[b].questions.length)
+					{console.log("bad data"); return false;}	
+				for(let c=0;c<data.questions.length;c++)
+					{
+					brain.attachInputLayer(data.questions[c]);
+					brain.updateForward();
+					let direction = brain.determinDirection(data.answers[c]); //return an array of updateObject with determined weights bias value adjustments, which each cell gets updated order should be from generation by column;
+					for(let d=0;d<direction.length;d++)
+						{
+						brain.cellArray.find(x=>x.ID === direction.ID).adjust(direction[d]);
+					}
+					brain.updateForward();
+					brain.displayBrain();
+					console.log("one sample done."+c+"moving on to next");
+				}	
+				console.log("one input data done"+b+"is what we did. YAY!!!!");
+			}
+			console.log("all training data done");
+			alert("win?");
 		},
 		testInput: function(inputActivation)
 			{
@@ -84,8 +107,57 @@ function createBrain(cellRowCount, cellColumnCount, options)
 			iniColumn[randomIndex].activations.push(inputActivation);
 			iniColumn[randomIndex].weights.push(inputActivation/-inputActivation);
 			brain.cellArray.splice(brain.cellArray.indexOf(brain.cellArray.find(x=>x.ID === iniColumn[randomIndex].ID)),1,iniColumn[randomIndex]);
+		},
+		attachInputLayer: function(a1DArrayOfInputs)
+			{
+			// here we can attach whatever input we want, conform it to a single array, it also needs to generate weights for the cell generation 0
+		},
+		determinDirection:function(answer)
+			{// answer is the array of values of each answer cell we want as a result
+			let summed = [];
+			let updatedObject =
+				{
+				ID:"",
+				weights:[],
+				bias:[],
+			};	
+			for(a=0;a<brain.cellArray.length;a++)
+				{
+				let summedObject = new updateObject();	
+				summed.push(summedObject);	
+			}
+			for(let e=0; e<answer.length; e++)
+				{
+				let arrayOfUpDateObjectsForCell = brain.cellArray.find(x=> x.order === e && x.answerBool === true).whatIwant(answer[e]); 
+				for(let f=0;f<arrayOfUpDateObjectsForCell.length;f++)
+					{
+					summed[f].ID = arrayOfUpDateObjectsForCell[f].ID;
+					for(let w=0; w<arrayOfUpDateObjectsForCell[f].weights.length;w++)
+						{
+						summed[f].weights[w] += arrayOfUpDateObjectsForCell[f].weights[w];
+					}
+					for(let b=0; b<arrayOfUpDateObjectsForCell[f].bias.length;b++)
+						{						
+						summed[f].bias[b] += arrayOfUpDateObjectsForCell[f].bias[b];
+					}
+				}
+				for(let s=0;s<summed.length;s++)
+					{
+					for(let sw=0; summed[s].weights.length;w++)	
+						{
+						Sigmoid(summed[s].weights[w]);
+					}
+					for(let sb=0; sb<summed[s].bias.length;sb++)
+						{
+						Sigmoid(summed[s].bias[b]);
+					}
+				}	
+			}
+			return summed;
 		}
 	};
+
+
 	for(let i=0; i<cellColumn; i++)
 		{
 		for(let j=0;j<cellRow; j++)
@@ -101,6 +173,7 @@ function createBrain(cellRowCount, cellColumnCount, options)
 				let weight = Math.random();
 				weights.push(weight);
 				var cell = MakeNewCell(activations, weights, Math.random(), i, j, cellPosition, cellArray);
+				cell.answerBool = false;
 			}
 			else if(i==cellColumnCount-1)
 				{
@@ -119,6 +192,7 @@ function createBrain(cellRowCount, cellColumnCount, options)
 				let lastCellColumn = cellArray.filter( x=> x.generation == previousGeneration);
 				let lastCellColumnLength = lastCellColumn.length;
 				cell = MakeNewCell(lastCellColumn.map(x=>x.value), createRandomWeights(lastCellColumnLength), getRandom(0,0.001),  i, j,cellPosition, cellArray);
+				cell.answerBool = false;
 			}
 			cellArray.push(cell);
 		}	
@@ -252,7 +326,9 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 			
 			ctx.lineTo(target.x+target.radius , target.y);
 			ctx.stroke();
-		},
+		}
+
+		,
 		textAnswer:function()
 			{
 			let Answer = "I DONT KNOW";	
@@ -373,6 +449,88 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 		getRadius:function()
 			{
 			return this.value * 50;
+		},
+		whatIwant:function(answerValue)
+			{	
+			//this calls whatIreallyReallyWant eventaully
+			//I can do this the stupid way, randomly changing this and taking the loweest result instead of trying to do math. but I want to learn the math.		
+			let desiredObjectChange = 
+				{
+				ID:this.ID,
+				weights:this.weights,
+				bias:this.bias
+			}
+
+			for(let k = 0; k< this.weights.length; k++)
+				{
+				let desiredWeight = this.weights[k];	
+				let desiredBias = this.bias;
+				let desiredActivation = this.activations[k];
+				for(let l=0;l<20;l++)
+					{	
+					let testWeight = Sigmoid((this.nudge(desiredWeights[k])*desiredActivation)+desiredBias);
+					if(this.value<testWeight<answerValue || this.value>testWeight>answerValue)
+						{
+						desiredWeights[k] = testWeight;
+					}
+					let testBias = Sigmoid((this.nudge(desiredBias))+desiredWeights[k]*desiredActivation);
+					if(this.value<testBias<answerValue || this.value>testBias>answerValue)
+						{
+						desiredBias = testBias;
+					}
+					let testActivation = Sigmoid((this.nudge(desiredActivation))*desiredWeight+desiredBias);
+					if(this.value<testActivation<answerValue || this.value>testActivation>answerValue)
+						{
+						desiredActivation=testActivation;	
+					}
+
+
+				}
+				desiredObjectChange.weights = desiredWeight[k];
+				desiredObjectChange.bias = desiredBias;
+				desiredObjectChange.value = Sigmoid(arrayMultiply(desiredObjectChange.weights, desiredObjectChange.activations)+desiredObjectChange.bias);
+			}
+			//that was this object - simple stuff, now we need to call this function
+			if(returnArray.length > 0)
+				{
+				try{
+					let old = returnArray.find(x=>x.ID === desiredObjectChange.ID);
+					if(old)
+						{
+						old.bias/=desiredObjectChange.bias*2;	
+						for(let o=0;o<desiredObjectChange.weights.length;o++)
+							{
+							old.weights[o]/=desiredObjectChange.weights[o]*2;
+							}
+						}
+
+				}catch(e){console.log(e+"could not find");}
+			}
+			returnArray.push(desiredObjectChange);
+			let lastGen = brain.cellArray.filter(x=>x.generation === this.generation-1);
+			let lgl = lastGen.length;
+			if(returnArray == brain.cellArray.length)
+				{
+				//end of recursion - we are done down this tree	
+				return returnArray;
+			}
+
+			else if(cell.order == brain.cellArray.filter(x=>x.generation ===cell.generation).length)
+				{
+				return true;
+			}
+			else
+				{
+				for(let i = lgl; i > 0 ;i--)
+					{
+					lastGen.find(x=>x.generation === lastGen[i].generation && x.order === lastGen[i].order).whatIwant(desiredObjectChange.value[i]);
+				
+				}
+			}
+		},
+		nudge: function(value)
+			{
+			return value+(Math.random(-1,1)/15);
 		}	
 	};
 	let value = cell.totalValue(); 
@@ -477,6 +635,8 @@ function* colorRotate()
 		yield color[garsvn];
 	}
 }
+
+
 let mode = {
 	growRate:2,
 	randomSeed: "upcomingIdea", // it will vary the order count according to generation
