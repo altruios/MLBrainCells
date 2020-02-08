@@ -2,11 +2,65 @@
 <html>
 <body>
 <canvas width="320" height="240" id="canvas" class="canvas"></canvas>
+<style>
+	body{
+		max-height: 100vh;
+		display:grid;
+		grid-template-areas:
+		"canvas cellArray";
+		grid-template-columns:1fr 1fr; 
+		overflow: none;
+	}
+	.canvas{
+		grid-area:canvas;
+	}
+	.cellArray{
+		grid-area: cellArray;
+		display:flex; 
+		flex-flow: column wrap;
+		overflow-y: scroll;
+		max-height: 100vh;
+	}
+	.cell{
+		display: grid;
+		grid-template-areas: 
+		"id numbers"
+		"activations weights";
+		border:solid;
+		width: 550px;
+		height:15vh;
+	}
+	.id{
+		grid-area:id;
+	}
+	.numbers{
+		grid-area:numbers;
+	}
+	.activations{
+		grid-area:activations;
+		display:flex;
+		flex-direction: column;
+		overflow-y: none;
+		flex-wrap: nowrap;
+	}
+	.weights{
+		grid-area:weights;
+		display:flex;
+		flex-direction: column;
+		overflow-y: none;
+		flex-wrap: none;
+	}
+</style>
 <script>
+
 const consoleStyling = 'font-weight: bold; font-size: 50px;color: red; text-shadow: 3px 3px 0 rgb(217,31,38) , 6px 6px 0 rgb(226,91,14) , 9px 9px 0 rgb(245,221,8) , 10px 10px 0 rgb(5,148,68) , 12px 12px 0 rgb(2,135,206) , 13px 13px 0 rgb(4,77,145) , 14px 14px 0 rgb(42,21,113)';
 const canvas = document.querySelector('canvas');
+const body = document.querySelector('body');
+const cellArrayDiv= document.createElement('div');
+cellArrayDiv.setAttribute('class',"cellArray");
+body.appendChild(cellArrayDiv);
 const ctx = canvas.getContext('2d');
-const width = canvas.width = window.innerWidth;
+const width = canvas.width = window.innerWidth/2	;
 const height = canvas.height = window.innerHeight;
 const uniuqeKey=makeID();
 const colorR = colorRotate();
@@ -104,9 +158,11 @@ function createBrain(cellRowCount, cellColumnCount, options)
 			{
 			let iniColumn = brain.cellArray.filter(x=>x.generation == 0);
 			let randomIndex = getRandomInt(iniColumn.length);
-			iniColumn[randomIndex].activations.push(inputActivation);
-			iniColumn[randomIndex].weights.push(inputActivation/-inputActivation);
-			brain.cellArray.splice(brain.cellArray.indexOf(brain.cellArray.find(x=>x.ID === iniColumn[randomIndex].ID)),1,iniColumn[randomIndex]);
+			
+			
+			iniColumn[randomIndex].activations[0] = inputActivation;
+			iniColumn[randomIndex].weights[0] = inputActivation;
+	//		brain.cellArray.splice(brain.cellArray.indexOf(brain.cellArray.find(x=>x.ID === iniColumn[randomIndex].ID)),1,iniColumn[randomIndex]);
 		},
 		attachInputLayer: function(a1DArrayOfInputs)
 			{
@@ -195,7 +251,9 @@ function createBrain(cellRowCount, cellColumnCount, options)
 				cell.answerBool = false;
 			}
 			cellArray.push(cell);
-		}	
+			let div = createDisplayCellDiv(cell);
+			cellArrayDiv.appendChild(div);
+		}
 	}
 	PLog("cell array at the end of the day is:L");
 	brain.inputlayer = "";
@@ -309,6 +367,14 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 			let text3 = "B:"+biasVal;
      		ctx.fillText(text, cell.position.x, cell.position.y+20);
      		ctx.fillText(text3, cell.position.x, cell.position.y);
+     		let updatedDiv = createDisplayCellDiv(cell);
+     	
+     		let targetDiv = document.getElementById(cell.ID);
+     		if(targetDiv != undefined)
+     			{
+     			targetDiv.replaceWith(updatedDiv);
+     		}
+
 		},
 		drawLineToTarget: function(target, index)
 			{
@@ -324,11 +390,11 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 				cell.position.y//y
 			);	
 			
+			if(target){
 			ctx.lineTo(target.x+target.radius , target.y);
 			ctx.stroke();
-		}
-
-		,
+			}
+		},
 		textAnswer:function()
 			{
 			let Answer = "I DONT KNOW";	
@@ -360,8 +426,7 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 			cv = sigmoid(cv);
 			this.value = cv;
 			return cv;
-		}
-		,
+		},
 		calculateWeights()
 			{
 			let cw = 0;
@@ -389,6 +454,10 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 			{
 			this.ID = uniuqeKey.next().value;
 		},
+		getId:function()
+			{
+			return this.ID;
+		},
 		setActivations: function(input)
 			{
 			this.activations = input;	
@@ -413,7 +482,7 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 			{
 			this.weights = value;
 		},
-		randomizeWeights:function()
+		randomizeWeights:function(updateDiv)
 			{
 			PLog(this.ID);	
 			console.table(this.weights);
@@ -430,6 +499,16 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 				this.drawLineToTarget(target,a, this.weights[a]);
 			}
 			console.table(this.weights);
+			if(updateDiv)
+				{
+				let updatedDiv = createDisplayCellDiv(cell);
+				let tg = document.getElementById(cell.ID);
+     			if(tg != undefined)
+     			{
+     			tg.replaceWith(updatedDiv);
+     		}
+
+			}
 		},
 		adjustWeights:function(index, value)
 			{
@@ -476,24 +555,27 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 				let desiredBias = this.bias;
 				let desiredActivation = this.activations[k];
 				for(let l=0;l<20;l++)
-					{	
-					let testWeight = Sigmoid((this.nudge(desiredWeights[k])*desiredActivation)+desiredBias);
+					{
+					let positiveRange = true;
+					if(desiredWeight < 0){ positiveRange = false;}		
+					let testWeight = Sigmoid((this.nudge(desiredWeights[k],k,positiveRange)*desiredActivation)+desiredBias);
 					if(this.value<testWeight<answerValue || this.value>testWeight>answerValue)
 						{
 						desiredWeights[k] = testWeight;
 					}
-					let testBias = Sigmoid((this.nudge(desiredBias))+desiredWeights[k]*desiredActivation);
+					positiveRange=true;
+					if(desiredBias < 0){positiveRange = false;}		
+					let testBias = Sigmoid((this.nudge(desiredBias,k,positiveRange))+desiredWeights[k]*desiredActivation);
 					if(this.value<testBias<answerValue || this.value>testBias>answerValue)
 						{
 						desiredBias = testBias;
 					}
-					let testActivation = Sigmoid((this.nudge(desiredActivation))*desiredWeight+desiredBias);
+					positiveRange=true;
+					let testActivation = Sigmoid((this.nudge(desiredActivation,k,positiveRange))*desiredWeight+desiredBias);
 					if(this.value<testActivation<answerValue || this.value>testActivation>answerValue)
 						{
 						desiredActivation=testActivation;	
 					}
-
-
 				}
 				desiredObjectChange.weights = desiredWeight[k];
 				desiredObjectChange.bias = desiredBias;
@@ -521,6 +603,7 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 				returnArray.push(desiredObjectChange);
 			}
 			let lastGen = brain.cellArray.filter(x=>x.generation === this.generation-1);
+
 			let lgl = lastGen.length;
 			if(returnArray == brain.cellArray.length)
 				{
@@ -529,20 +612,48 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 			}
 			else if(cell.order == brain.cellArray.filter(x=>x.generation ===cell.generation).length)
 				{
-				return true;
+				//done with ordered Row - returning array.	
+				return returnArray;
 			}
-			else
+			else if(lastGen === undefined)
 				{
-				for(let i = lgl; i > 0 ;i--)
+				//if we are at the first index.
+					
+				return returnArray;	
+			}
+			else if(cell.generation  > 0)	
+				{
+				//we haven't reached the end yet.
+				let returnedArray = [];	
+				for(let g = lastGen.generation[0].generation; g>0;g--)
 					{
-					lastGen.find(x=>x.generation === lastGen[i].generation && x.order === lastGen[i].order).whatIwant(desiredObjectChange.value[i]);
-				
-				}
+					for(let i = lgl; i > 0 ;i--)
+						{
+						//this is the array from calling
+						returnedArray.push(lastGen.find(x=>x.generation === lastGen[i].generation && x.order === lastGen[i].order).whatIwant(desiredObjectChange.value[i]));
+						returnedArray.flat(infinity);
+					}
+					//we finished a colummn at this point -- we are returning an array up
+					return returnedArray;
+
+				}	
 			}
 		},
-		nudge: function(value)
+		nudge: function(value,index, isPositive)
 			{
-			return value+(Math.random(-1,1)/15);
+			if(isPositive)
+				{
+				return value+(Math.random(0,1)/(index+1));
+			}
+			else
+				{	
+				return value+(Math.random(-1,1)/(index+1));
+			}
+		},
+		adjust:function(desiredAdjustments)
+			{
+			this.weights = desiredAdjustments.weights;
+			this.bias = desiredAdjustments.bias;
 		}	
 	};
 	let value = cell.totalValue(); 
@@ -662,14 +773,46 @@ function arrayMultiply(array1, array2)
 	}
 	return result;
 }
-
+function createDisplayCellDiv(cell)
+	{
+		let cellDiv =  document.createElement('div');
+		cellDiv.setAttribute('id', cell.ID);
+		cellDiv.setAttribute('class', 'cell');	
+     	let numbersDiv = document.createElement('div');
+     	numbersDiv.setAttribute('class', 'numbers');
+     	numbersDiv.innerHTML = "value:"+cell.value+"<BR>bias:"+cell.bias;
+     	let idDiv = document.createElement('div');
+     	idDiv.setAttribute('class', 'id');
+     	idDiv.innerHTML = "generation:"+cell.generation+"<BR>order:"+cell.order;
+     	let weightsDiv = document.createElement('div');
+     	weightsDiv.setAttribute('class', "weights");
+     	for(let i = 0; i < cell.weights.length;i++)
+     		{
+     		let weightDisplay = document.createElement('div');
+     		weightDisplay.innerHTML = "weight["+i+"]:"+cell.weights[i];
+     		weightsDiv.appendChild(weightDisplay);
+     	}
+     	let activationsDiv = document.createElement('div');
+        activationsDiv.setAttribute('class', "activations");
+     	for(let i = 0; i < cell.activations.length;i++)
+    	{
+    	let actDisplay = document.createElement('div');
+   		actDisplay.innerHTML = "activations["+i+"]:"+cell.activations[i];
+   		activationsDiv.appendChild(actDisplay);
+   	}
+   	cellDiv.appendChild(idDiv);
+   	cellDiv.appendChild(numbersDiv);
+  	cellDiv.appendChild(weightsDiv);
+    cellDiv.appendChild(activationsDiv);
+   	return cellDiv;
+}	
 let mode = {
 	growRate:2,
 	randomSeed: "upcomingIdea", // it will vary the order count according to generation
 	answers:["NO", "I Don't Know", "Yes"], //last array still working on the details - placeholder
 	input:[], //defined as [number, {interface}] where interface... magic?
 }
-let brain = createBrain(9,16, mode);
+let brain = createBrain(6,12, mode);
 window.onload = function()
 	{	
 	brain.displayBrain();
@@ -680,7 +823,16 @@ window.onload = function()
 	};
 	window.addEventListener('click', function()
 		{
-		brain.testInput(0);
+		let positiveCheck = Math.random(0,1);
+		if(positiveCheck>0.5)
+			{
+			brain.testInput(Math.random(-1,0));
+	
+		}	
+		else
+			{
+			brain.testInput(Math.random(0,1));
+		}
 		brain.updateForward();
 		brain.displayBrain();
 	//	brain.train(); this won't end up in an on click event... or we could just live with it taking forever
@@ -711,19 +863,31 @@ window.onload = function()
 			}
 			else
 				{
-				if(keyNumber >96 && keyNumber < 122)
+				if(keyNumber > 96 && keyNumber < 122)
 					{
 					var keyNum = keyNumber - 97;	
 					PLog(keyNum+" generation targeted");
-					try{
-						let  targetGenWeights = brain.cellArray.filter(x=>x.generation == keyNum);
+					
+					if(keyNum == 0)
+						{
+						console.log("last gen");	
+						let  targetGenWeights = brain.cellArray.filter(x=>x.generation === 0);
 						for(let h=0;h<targetGenWeights.length;h++)
 							{
-							brain.cellArray.find(x=> x.ID === targetGenWeights[h].ID).randomizeWeights();
+							targetGenWeights[h].randomizeWeights(true);
 						}
 					}
-					catch(e){console.error(e);}
-				}
+					else
+						{
+							console.log("not last gen");
+						let  targetGenWeights = brain.cellArray.filter(x=>x.generation === keyNum);
+						for(let h=0;h<targetGenWeights.length;h++)
+							{
+							targetGenWeights[h].randomizeWeights(true);
+							}
+						}
+						
+					}
 			}
 		},false);
 }
