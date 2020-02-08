@@ -127,22 +127,28 @@ function createBrain(cellRowCount, cellColumnCount, options)
 		},
 		train: function(data)
 			{
-			console.log(typeof data.questions);
-			console.log(typeof data.answers);
-			console.log("train test");	
+			console.log(typeof data);
+			console.log(typeof data[0].answers[0]);
+			console.log("train test");
 			// we we take in the training data, it should come in the form of an of an array of object with two properties, inputs, desired answers.
 			// we need to look at each answer neuorn - LookBack should be a recursive called function that calles itself on an cell in a previous generation/order
 			for (let b=0; b< data.length; b++)// for the length of the training data - I.E. we are going assume we are getting many relativly shortly indexed arrays
 				{
-				if(data[b].questions.length != data[b].questions.length)
+				if(data[b].answers.length != data[b].questions.length)
 					{console.log("bad data"); return false;}	
-				for(let c=0;c<data.questions.length;c++)
+				for(let c=0;c<data[b].questions.length;c++)
 					{
-					brain.attachInputLayer(data.questions[c]);
+					brain.attachInputLayer(data[b].questions[c]);
+					console.log(brain);
+					console.log("that was brain");
 					brain.updateForward();
-					let direction = brain.determinDirection(data.answers[c]); //return an array of updateObject with determined weights bias value adjustments, which each cell gets updated order should be from generation by column;
+					console.log(data[b].answers[c]);
+					let direction = brain.determinDirection(data[b].answers[c]); //return an array of updateObject with determined weights bias value adjustments, which each cell gets updated order should be from generation by column;
 					for(let d=0;d<direction.length;d++)
 						{
+						console.log(direction);	
+						console.log(direction.ID);
+						console.log(brain.cellArray);	
 						brain.cellArray.find(x=>x.ID === direction.ID).adjust(direction[d]);
 					}
 					brain.updateForward();
@@ -171,20 +177,31 @@ function createBrain(cellRowCount, cellColumnCount, options)
 		determinDirection:function(answer)
 			{// answer is the array of values of each answer cell we want as a result
 			let summed = [];
-			let updatedObject =
-				{
-				ID:"",
-				weights:[],
-				bias:[],
-			};	
+						console.log("here we go!");	
+
 			for(a=0;a<brain.cellArray.length;a++)
 				{
-				let summedObject = new updateObject();	
+				let summedObject = 
+					{
+					ID:"",
+					weights:[],
+					bias:[],
+				};	
 				summed.push(summedObject);	
 			}
+			console.log("dummy array made;");	
+			console.log(answer);
+			console.log("that was answer");
 			for(let e=0; e<answer.length; e++)
 				{
-				let arrayOfUpDateObjectsForCell = brain.cellArray.find(x=> x.order === e && x.answerBool === true).whatIwant(answer[e]); 
+				console.log("in the e loop");	
+				let answerCell = brain.cellArray.find(x=>x.order == e && x.answerBool === true);
+				console.log("answer cell is:");
+				console.dir(answerCell);
+				console.dir(answer);
+
+				let arrayOfUpDateObjectsForCell = answerCell.whatIwant(answer[e]); 
+				console.log(arrayOfUpDateObjectsForCell);
 				for(let f=0;f<arrayOfUpDateObjectsForCell.length;f++)
 					{
 					summed[f].ID = arrayOfUpDateObjectsForCell[f].ID;
@@ -539,51 +556,77 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 			return this.value * 50;
 		},
 		whatIwant:function(answerValue)
-			{	
+			{
+				console.log("want I want called on:"+this.ID);	
+			let returnArray = [];	
+			let desiredWeights = this.weights;
+			let desiredBias = this.bias;
+			let desiredActivations = this.activations;
+			let error =(1/2)*Math.pow(cell.value-answerValue,2);
 			//this calls whatIreallyReallyWant eventaully
 			//I can do this the stupid way, randomly changing this and taking the loweest result instead of trying to do math. but I want to learn the math.		
 			let desiredObjectChange = 
 				{
 				ID:this.ID,
 				weights:this.weights,
-				bias:this.bias
+				bias:0,
+				activations:this.activations
 			}
-			let error =(1/2)*Math.pow(cell.value-answerValue,2);
+	
 			for(let k = 0; k< this.weights.length; k++)
 				{
-				let desiredWeight = this.weights[k];	
-				let desiredBias = this.bias;
-				let desiredActivation = this.activations[k];
+				console.log("array multiply!1   at index"+k);
+				let lastValue = Sigmoid(arrayMultiply(desiredWeights, desiredActivations)+desiredBias);
+				let lastError = (1/2)*Math.pow(lastValue-answerValue,2);
 				for(let l=0;l<20;l++)
 					{
-					let positiveRange = true;
-					if(desiredWeight < 0){ positiveRange = false;}		
-					let testWeight = Sigmoid((this.nudge(desiredWeights[k],k,positiveRange)*desiredActivation)+desiredBias);
-					if(this.value<testWeight<answerValue || this.value>testWeight>answerValue)
+					console.log("array multiply!2   at indexs"+k+" "+l);	
+					let currentValue = Sigmoid(arrayMultiply(desiredObjectChange.weights, desiredObjectChange.activations)+desiredObjectChange.bias);
+					let currentError = (1/2)*Math.pow(currentValue-answerValue,2);
+					console.log("currentValue:"+currentValue);
+					console.log("currentError"+currentError);
+					console.log("lastError"+lastError);
+					console.log("lastValue"+lastValue);
+					let positiveRange = false;
+					if(desiredWeights[k] < 0){ positiveRange = true;}	
+					let nudgedWeightArray = this.nudge(desiredWeights[k],k,positiveRange, "weights");	//returns a copy array to test, with weight adjusted.
+					console.log("array multiply!3   at indexs"+k+" " +l);	
+					let testWeightChange = Sigmoid(arrayMultiply(nudgedWeightArray,desiredActivations)+desiredBias);
+
+					if(currentError > (1/2)*Math.pow((testWeightChange - answerValue), 2));
 						{
-						desiredWeights[k] = testWeight;
+						console.log("error was"+currentError+" now changing to "+(1/2)*Math.pow((testWeightChange - answerValue), 2));	
+						console.log("this value"+this.value);	
+						desiredWeights = nudgedWeightArray;
 					}
-					positiveRange=true;
-					if(desiredBias < 0){positiveRange = false;}		
-					let testBias = Sigmoid((this.nudge(desiredBias,k,positiveRange))+desiredWeights[k]*desiredActivation);
+					positiveRange=false;
+					if(desiredBias < 0){positiveRange = true;}		
+					let testBias = Sigmoid((this.nudge(desiredBias,l,positiveRange))+desiredWeights[k]*desiredActivations[k]);
 					if(this.value<testBias<answerValue || this.value>testBias>answerValue)
 						{
 						desiredBias = testBias;
 					}
-					positiveRange=true;
-					let testActivation = Sigmoid((this.nudge(desiredActivation,k,positiveRange))*desiredWeight+desiredBias);
+					positiveRange=!!Math.random(0,1)>5;
+					console.log(!!Math.random(0,1)>5);	
+					let testActivation = Sigmoid((this.nudge(desiredActivations[k],l,positiveRange, "activations"))*desiredWeights[k]+desiredBias);
 					if(this.value<testActivation<answerValue || this.value>testActivation>answerValue)
 						{
-						desiredActivation=testActivation;	
+						desiredActivations[k]=testActivation;	
 					}
 				}
-				desiredObjectChange.weights = desiredWeight[k];
+				desiredObjectChange.weights[k] = desiredWeights[k];
 				desiredObjectChange.bias = desiredBias;
+				desiredObjectChange.activations[k] = desiredActivations[k];
+				console.log("array multiply!4   at indexs"+ k+" but out of l loop");	
 				desiredObjectChange.value = Sigmoid(arrayMultiply(desiredObjectChange.weights, desiredObjectChange.activations)+desiredObjectChange.bias);
+				console.log("answer val"+answerValue+" updateval"+desiredObjectChange.value+" thisval"+this.value+" activ"+desiredObjectChange.activations[k]+" weight"+desiredObjectChange.weights[k]);
 			}
+			console.log("answer val"+answerValue+" updateval"+desiredObjectChange.value+" thisval"+this.value);
+
 			//that was this object - simple stuff, now we need to call this function
 			if(returnArray.length > 0)
 				{
+				console.log("in a recursion");	
 				let old = returnArray.find(x=>x.ID === desiredObjectChange.ID);
 				if(old)
 					{
@@ -625,7 +668,7 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 				{
 				//we haven't reached the end yet.
 				let returnedArray = [];	
-				for(let g = lastGen.generation[0].generation; g>0;g--)
+				for(let g = lastGen.generation; g>0;g--)
 					{
 					for(let i = lgl; i > 0 ;i--)
 						{
@@ -639,16 +682,57 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 				}	
 			}
 		},
-		nudge: function(value,index, isPositive)
+		nudge: function(value, index, isPositive, type)
 			{
 			if(isPositive)
 				{
-				return value+(Math.random(0,1)/(index+1));
+				value+=(Math.random(0,1)/(index+1));
 			}
 			else
 				{	
-				return value+(Math.random(-1,1)/(index+1));
+				value+=(Math.random(-1,1)/(index+1));
 			}
+			let copyArray = [];
+			if(type == "weights")
+				{
+				copyArray = this.weights;
+			}
+			else if(type == "activations")
+				{
+				copyArray = this.activations;	
+			}
+			else
+				{
+				return value;
+			}
+			copyArray[index] = value;
+			console.log("copyArray is");
+			console.log(copyArray);
+			return copyArray;
+		},
+		modulate:function(array, type)
+			{
+			let bucketArray = [];
+			let j=0;
+			for(i=0;i<array.length;i++)
+				{
+				bucketArray.push(array[i]);
+				j++;
+			}
+			let targetArray = this.weights;
+			if(type == "activations")
+				{
+				targetArray = this.activations;
+			}
+
+			for(k=j;k<targetArray.length;k++)
+				{
+				bucketArray.push(targetArray[k]);
+			}
+
+			return bucketArray;
+
+
 		},
 		adjust:function(desiredAdjustments)
 			{
@@ -674,6 +758,58 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 	}
 	return cell;	
 }
+function CreateTestData(Count, inputSize, outputSize, objectCount)
+	{//count is the number of sets
+	//size is the input space for each test
+	//this returns an array of objects with two 2D arrays attached.
+	let dataArray = [];	
+	for(let k=0;k<objectCount;k++)
+		{
+		console.log("making data:");	
+		let dataObject=
+			{
+			questions:[],
+			answers:[],
+		};	
+		for(let i=0;i<Count;i++)
+			{
+			let questionArray = [];	
+			for(let l=0;l<inputSize;l++)
+				{	
+				let question = Math.random(0,1);
+				questionArray.push(question);
+			}
+			dataObject.questions.push(questionArray);
+		}
+		for(let j=0; j<Count;j++)
+			{
+			let answerArray = [];
+			for(let m = 0; m < outputSize; m++)	
+				{
+				let answer = 0;
+				if(Math.random(0,1) > 0.5)	
+					{
+					answer = 1;
+				}
+				answerArray.push(answer);
+			}
+			dataObject.answers.push(answerArray);
+		}
+		dataArray.push(dataObject);
+	}
+	console.log(dataArray);
+	return dataArray;
+}
+
+
+
+
+
+
+
+
+
+//helper functions
 function* makeID()
 	{
 	let itters = 0
@@ -760,9 +896,11 @@ function* colorRotate()
 }
 function arrayMultiply(array1, array2)
 	{
+	console.log(array1);
+	console.log(array2);	
 	let result = 0;	
 	let length = array1.length;
-	if(array2.length !=length)
+	if(array2.length != length)
 		{
 		console.error("somethingw went amiss here");	
 		return result;
@@ -812,32 +950,29 @@ let mode = {
 	answers:["NO", "I Don't Know", "Yes"], //last array still working on the details - placeholder
 	input:[], //defined as [number, {interface}] where interface... magic?
 }
-let brain = createBrain(6,12, mode);
+let brain = createBrain(3,4, mode);
 window.onload = function()
 	{	
 	brain.displayBrain();
-	const trainingData = 
-		{
-		input: [],
-		answers:[]
-	};
+	const trainingData = CreateTestData(22,200,3,222);
 	window.addEventListener('click', function()
 		{
-		let positiveCheck = Math.random(0,1);
-		if(positiveCheck>0.5)
-			{
-			brain.testInput(Math.random(-1,0));
-	
-		}	
-		else
-			{
-			brain.testInput(Math.random(0,1));
-		}
+
+		brain.train(trainingData);
 		brain.updateForward();
 		brain.displayBrain();
 	//	brain.train(); this won't end up in an on click event... or we could just live with it taking forever
 	});
 	var isShift = false;
+	window.addEventListener('oncontextmenu', (event)=>
+		{
+		PLog("middle button pressed: making data");
+		console.log('done');
+		console.log('data is:');
+		console.dir(trainingData);
+
+		return false;
+	});
 	window.addEventListener('keypress', (event)=>
 		{
 		PLog(event.key)	
