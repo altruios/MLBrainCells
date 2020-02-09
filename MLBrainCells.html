@@ -69,7 +69,7 @@ ctx.fillRect(0, 0, width, height);
 function createBrain(cellColumnCount, cellRowCount, options)
 	{
 	var cellRow = cellRowCount;
-	var cellColumn = cellColumnCount;	
+	var cellColumn = cellColumnCount;
 	const offSetY =  35;	
 	const offSetX =   32;
 	const scaleValX = width/cellColumnCount - offSetX;
@@ -177,7 +177,7 @@ function createBrain(cellColumnCount, cellRowCount, options)
 		determinDirection:function(answer)
 			{// answer is the array of values of each answer cell we want as a result
 			let summed = [];
-						console.log("here we go!");	
+			console.log("here we go!");	
 
 			for(a=0;a<brain.cellArray.length;a++)
 				{
@@ -571,18 +571,18 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 		},
 		whatIwant:function(answerValue, returnArray)
 			{
-			console.log("answer value is:"+answerValue);
 			if(answerValue ===undefined)
 				{
 				console.trace(answerValue);	
 				}	
 			PLog("want I want called on:"+this.ID);	
+			console.log("answer value is:"+answerValue);
+
 			let desiredWeights = this.weights;
 			let desiredBias = this.bias;
 			let desiredActivations = this.activations;
 			let error =(1/2)*Math.pow(cell.value-answerValue,2);
 			//this calls whatIreallyReallyWant eventaully
-			//I can do this the stupid way, randomly changing this and taking the loweest result instead of trying to do math. but I want to learn the math.		
 			let desiredObjectChange = 
 				{
 				ID:this.ID,
@@ -593,7 +593,6 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 	
 			for(let k = 0; k< this.weights.length; k++)
 				{
-				console.log("array multiply!k index:"+k);
 				let lastValue = Sigmoid(arrayMultiply(desiredWeights, desiredActivations)+desiredBias);
 				let lastError = (1/2)*Math.pow(lastValue-answerValue,2);
 				for(let l=0;l<20;l++)
@@ -618,7 +617,7 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 					let nudgedBiasVal = this.nudge(desiredBias,k,l,positiveRange);
 					let testBiasChange = Sigmoid(nudgedBiasVal+desiredWeights[k]*desiredActivations[k]);
 					let testBiasError = (1/2)*Math.pow(testBiasChange - answerValue, 2);
-					let testBiastResult = compareSmallnumbers('isSmaller', currentError, testBiasError);
+					let testBiastResult = ('isSmaller', currentError, testBiasError);
 					if(testBiastResult);
 						{
 						
@@ -646,23 +645,26 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 				desiredObjectChange.weights[k] = desiredWeights[k];
 				desiredObjectChange.bias = desiredBias;
 				desiredObjectChange.activations[k] = desiredActivations[k];
-				console.log("array multiply!4   at indexs"+ k+" but out of l loop");	
 				desiredObjectChange.value = Sigmoid(arrayMultiply(desiredObjectChange.weights, desiredObjectChange.activations)+desiredObjectChange.bias);
-				console.log("answer val"+answerValue+" updateval"+desiredObjectChange.value+" thisval"+this.value+" activ"+desiredObjectChange.activations[k]+" weight"+desiredObjectChange.weights[k]);
 			}
-			console.log("answer val"+answerValue+" updateval"+desiredObjectChange.value+" thisval"+this.value);
 
 			//that was this object - simple stuff, now we need to call this function
 			if(returnArray.length > 0)
 				{
-				console.log("in a recursion");	
+				PLog("this greater than zero, so we must be in a return somewhere");
+				console.log(this)	
+				console.log("doing some cleanup.");	
+				console.log("in a recursion");
+				returnArray = Flat(returnArray);	
 				let old = returnArray.find(x=>x.ID === desiredObjectChange.ID);
 				if(old)
 					{
+					console.log("is old");		
 					old.bias/=desiredObjectChange.bias*2;	
 					for(let o=0;o<desiredObjectChange.weights.length;o++)
 						{
 						old.weights[o]/=desiredObjectChange.weights[o]*2;
+                        old.activations[o]/=desiredObjectChange.activations[0]*2;
 					}
 				}
 				else
@@ -679,24 +681,13 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 			let lastGen = brain.cellArray.filter(x=>x.generation === this.generation-1);
 
 			let lgl = lastGen.length;
-			if(returnArray == brain.cellArray.length)
-				{
-				console.log("this is desired end of function - we are done at the top level");	
-				//end of recursion - we are done down this tree	
-				return returnArray;
-			}
-			else if(cell.order == brain.cellArray.filter(x=>x.generation ===cell.generation).length)
+	
+			if(cell.order == brain.cellArray.filter(x=>x.generation === cell.generation).length)
 				{
 				console.log("done with ordered row, returning array into next gen cells array");	
 				//done with ordered Row - returning array.	
+				returnArray = Flat(returnnArray);	
 				return returnArray;
-			}
-			else if(lastGen === undefined)
-				{
-				console.log("returning return Array since we have reached the first index");	
-				//if we are at the first index.
-					
-				return returnArray;	
 			}
 			else if(cell.generation  > 0)	
 				{
@@ -710,30 +701,31 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 					{
 					console.log("at index [g](generations)"+g);	
 					console.log("for the length of the last generation itself:"+lgl);		
-					for(let i = lgl-1; i > 0 ; i--)
+					for(let i =0; i < lgl ; i++)
 						{
 						console.log("at index [i](order)"+i);		
 						//this is the array from calling
 						PLog("we push into the return array - an array returned by whatIwant on an cell at generation:"+g+" and order"+i);
-						returnedArray.push(lastGen.find(x=>x.order === i).whatIwant(desiredObjectChange.value, returnedArray));
-						console.log("%c we HAVE JUST pushed into the return array - an array returned by whatIwant on an cell at generation:"+g+" and order"+i, "color:green, font-size 40px");
-						console.log("we are on this cell");
-						console.log(this);
-						console.log(returnedArray);
-						console.log("now flattening that:");
-						console.log(returnedArray);
+						returnedArray.push(lastGen.find(x=>x.generation === g).whatIwant(desiredObjectChange.value, returnedArray));
+
 					}
-					console.log("we are finished with a column returning returnArray");
-					console.log(returnedArray);
 
 					//we finished a colummn at this point -- we are returning an array up
-					return returnedArray;
+					returnedArray = Flat(returnedArray);
+					return returnedArray; // this seems to be the unintended end to the recursion.
 
 				}
+				returnArray = Flat(returnArray);	
 				return returnArray; // returned array vs return array... 
 			}
-			return "no really, WHAT??";
+			else
+				{
+				return "no really, WHAT??";
+			}
 		},
+
+
+
 		nudge: function(value ,arrayIndex, Nudgeindex, isPositive, type)
 			{
 	
@@ -1060,11 +1052,10 @@ window.onload = function()
 	const trainingData = CreateTestData(22,200,3,222);
 	window.addEventListener('click', function()
 		{
-
+	//	brain.testInput(0.5);
 		brain.train(trainingData);
 		brain.updateForward();
 		brain.displayBrain();
-	//	brain.train(); this won't end up in an on click event... or we could just live with it taking forever
 	});
 	var isShift = false;
 	window.addEventListener('oncontextmenu', (event)=>
