@@ -66,7 +66,7 @@ const uniuqeKey=makeID();
 const colorR = colorRotate();
 ctx.fillStyle = 'rgb(250, 250, 250)';
 ctx.fillRect(0, 0, width, height);
-function createBrain(cellRowCount, cellColumnCount, options)
+function createBrain(cellColumnCount, cellRowCount, options)
 	{
 	var cellRow = cellRowCount;
 	var cellColumn = cellColumnCount;	
@@ -200,29 +200,39 @@ function createBrain(cellRowCount, cellColumnCount, options)
 				console.dir(answerCell);
 				console.dir(answer);
 
-				let arrayOfUpDateObjectsForCell = answerCell.whatIwant(answer[e]); 
+				let arrayOfUpDateObjectsForCell = Flat(answerCell.whatIwant(answer[e], []),); 
 				console.log(arrayOfUpDateObjectsForCell);
-				for(let f=0;f<arrayOfUpDateObjectsForCell.length;f++)
+				console.count("that was teh array for that answer cell, there should be 3 calls of this one!!!!");
+				for(let f=0;f<arrayOfUpDateObjectsForCell.length;f++) 
 					{
+					console.count("counting up the length - it is"+f);	
 					summed[f].ID = arrayOfUpDateObjectsForCell[f].ID;
-					for(let w=0; w<arrayOfUpDateObjectsForCell[f].weights.length;w++)
+					for (let index = 0; index< arrayOfUpDateObjectsForCell[f].length;index++)
 						{
-						summed[f].weights[w] += arrayOfUpDateObjectsForCell[f].weights[w];
+						for(let w=0; w<arrayOfUpDateObjectsForCell[f].weights.length;w++)
+							{
+							console.count("counting up the weights - it is"+w);		
+							summed[f].weights[w] += arrayOfUpDateObjectsForCell[f].weights[w];
+						}
 					}
 					for(let b=0; b<arrayOfUpDateObjectsForCell[f].bias.length;b++)
-						{						
+						{
+						console.count("counting up the bias - it is"+w);								
 						summed[f].bias[b] += arrayOfUpDateObjectsForCell[f].bias[b];
 					}
 				}
 				for(let s=0;s<summed.length;s++)
 					{
-					for(let sw=0; summed[s].weights.length;w++)	
+					console.count("counting up the sum - it is"+s);								
+					for(let sw=0; summed[s].weights.length;sw++)	
 						{
-						Sigmoid(summed[s].weights[w]);
+						console.count("counting up the summedWeights - it is"+sw);									
+						Sigmoid(summed[s].weights[sw]);
 					}
 					for(let sb=0; sb<summed[s].bias.length;sb++)
 						{
-						Sigmoid(summed[s].bias[b]);
+						console.count("counting up the bias - it is"+sb);										
+						Sigmoid(summed[s].bias[sb]);
 					}
 				}	
 			}
@@ -231,7 +241,7 @@ function createBrain(cellRowCount, cellColumnCount, options)
 	};
 
 
-	for(let i=0; i<cellColumn; i++)
+	for(let i=0; i <= cellColumn; i++)
 		{
 		for(let j=0;j<cellRow; j++)
 			{
@@ -248,7 +258,7 @@ function createBrain(cellRowCount, cellColumnCount, options)
 				var cell = MakeNewCell(activations, weights, Math.random(), i, j, cellPosition, cellArray);
 				cell.answerBool = false;
 			}
-			else if(i==cellColumnCount-1)
+			else if(i==cellColumnCount)
 				{
 				cellRow=options.answers.length;
 				let activations =[];
@@ -272,6 +282,9 @@ function createBrain(cellRowCount, cellColumnCount, options)
 			cellArrayDiv.appendChild(div);
 		}
 	}
+
+
+
 	PLog("cell array at the end of the day is:L");
 	brain.inputlayer = "";
 	brain.cellArray = cellArray;
@@ -414,6 +427,7 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 		},
 		textAnswer:function()
 			{
+			ctx.fillText("amAnswer", cell.position.x,cell.position.y);		
 			let Answer = "I DONT KNOW";	
 			let colorText = "black";
 			if(cell.value < 0.5)
@@ -555,10 +569,14 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 			{
 			return this.value * 50;
 		},
-		whatIwant:function(answerValue)
+		whatIwant:function(answerValue, returnArray)
 			{
-				console.log("want I want called on:"+this.ID);	
-			let returnArray = [];	
+			console.log("answer value is:"+answerValue);
+			if(answerValue ===undefined)
+				{
+				console.trace(answerValue);	
+				}	
+			PLog("want I want called on:"+this.ID);	
 			let desiredWeights = this.weights;
 			let desiredBias = this.bias;
 			let desiredActivations = this.activations;
@@ -575,44 +593,55 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 	
 			for(let k = 0; k< this.weights.length; k++)
 				{
-				console.log("array multiply!1   at index"+k);
+				console.log("array multiply!k index:"+k);
 				let lastValue = Sigmoid(arrayMultiply(desiredWeights, desiredActivations)+desiredBias);
 				let lastError = (1/2)*Math.pow(lastValue-answerValue,2);
 				for(let l=0;l<20;l++)
 					{
-					console.log("array multiply!2   at indexs"+k+" "+l);	
 					let currentValue = Sigmoid(arrayMultiply(desiredObjectChange.weights, desiredObjectChange.activations)+desiredObjectChange.bias);
 					let currentError = (1/2)*Math.pow(currentValue-answerValue,2);
-					console.log("currentValue:"+currentValue);
-					console.log("currentError"+currentError);
-					console.log("lastError"+lastError);
-					console.log("lastValue"+lastValue);
+	
 					let positiveRange = false;
 					if(desiredWeights[k] < 0){ positiveRange = true;}	
-					let nudgedWeightArray = this.nudge(desiredWeights[k],k,positiveRange, "weights");	//returns a copy array to test, with weight adjusted.
-					console.log("array multiply!3   at indexs"+k+" " +l);	
+					let nudgedWeightArray = this.nudge(desiredWeights[k],k,l,positiveRange, "weights");	//returns a copy array to test, with weight adjusted.
 					let testWeightChange = Sigmoid(arrayMultiply(nudgedWeightArray,desiredActivations)+desiredBias);
-
-					if(currentError > (1/2)*Math.pow((testWeightChange - answerValue), 2));
+					let testWeightError = (1/2)*Math.pow(testWeightChange - answerValue, 2);
+				
+					let testWeightResult = compareSmallnumbers('isSmaller', currentError, testWeightError);
+					if(testWeightResult);
 						{
-						console.log("error was"+currentError+" now changing to "+(1/2)*Math.pow((testWeightChange - answerValue), 2));	
-						console.log("this value"+this.value);	
 						desiredWeights = nudgedWeightArray;
+						currentError = testWeightError;
 					}
 					positiveRange=false;
-					if(desiredBias < 0){positiveRange = true;}		
-					let testBias = Sigmoid((this.nudge(desiredBias,l,positiveRange))+desiredWeights[k]*desiredActivations[k]);
-					if(this.value<testBias<answerValue || this.value>testBias>answerValue)
+					if(desiredBias < 0){positiveRange = true;}	
+					let nudgedBiasVal = this.nudge(desiredBias,k,l,positiveRange);
+					let testBiasChange = Sigmoid(nudgedBiasVal+desiredWeights[k]*desiredActivations[k]);
+					let testBiasError = (1/2)*Math.pow(testBiasChange - answerValue, 2);
+					let testBiastResult = compareSmallnumbers('isSmaller', currentError, testBiasError);
+					if(testBiastResult);
 						{
-						desiredBias = testBias;
+						
+						desiredBias = nudgedBiasVal;
+						currentError = testBiasError;
 					}
 					positiveRange=!!Math.random(0,1)>5;
-					console.log(!!Math.random(0,1)>5);	
-					let testActivation = Sigmoid((this.nudge(desiredActivations[k],l,positiveRange, "activations"))*desiredWeights[k]+desiredBias);
-					if(this.value<testActivation<answerValue || this.value>testActivation>answerValue)
+					let nudgedAcitivationArray = this.nudge(desiredActivations[k],k,l,positiveRange, "activations");
+					let testActivationChange = Sigmoid(arrayMultiply(nudgedAcitivationArray,desiredWeights)+desiredBias);
+					let testActivationError = (1/2)*Math.pow(testActivationChange - answerValue, 2);
+					let testActivationResult = compareSmallnumbers('isSmaller', currentError, testActivationError);
+					if(testActivationResult);
 						{
-						desiredActivations[k]=testActivation;	
+						desiredActivations[k] = testActivationChange;	
+						lastError = testActivationError;
 					}
+
+					//and the end of the loop, update the error to the new value
+					if(currentError<lastError)
+						{
+						lastError = currentError;
+					}
+
 				}
 				desiredObjectChange.weights[k] = desiredWeights[k];
 				desiredObjectChange.bias = desiredBias;
@@ -638,11 +667,13 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 				}
 				else
 					{
+					console.log("pushing desired object change since it is new to the array");	
 					returnArray.push(desiredObjectChange);
 				}
 			}
 			else
 				{
+				console.log("pushing desired object change since returnArray.length is zero");		
 				returnArray.push(desiredObjectChange);
 			}
 			let lastGen = brain.cellArray.filter(x=>x.generation === this.generation-1);
@@ -650,47 +681,72 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 			let lgl = lastGen.length;
 			if(returnArray == brain.cellArray.length)
 				{
+				console.log("this is desired end of function - we are done at the top level");	
 				//end of recursion - we are done down this tree	
 				return returnArray;
 			}
 			else if(cell.order == brain.cellArray.filter(x=>x.generation ===cell.generation).length)
 				{
+				console.log("done with ordered row, returning array into next gen cells array");	
 				//done with ordered Row - returning array.	
 				return returnArray;
 			}
 			else if(lastGen === undefined)
 				{
+				console.log("returning return Array since we have reached the first index");	
 				//if we are at the first index.
 					
 				return returnArray;	
 			}
 			else if(cell.generation  > 0)	
 				{
+				console.log("generation is greater than zero so we are starting a return array");	
 				//we haven't reached the end yet.
 				let returnedArray = [];	
-				for(let g = lastGen.generation; g>0;g--)
+				console.log(lastGen);
+				let lg=lastGen[0].generation;
+				console.log("for the length of the last generation's generation number:"+lastGen[0].generation);	
+				for(let g = lg; g>0;g--)
 					{
-					for(let i = lgl; i > 0 ;i--)
+					console.log("at index [g](generations)"+g);	
+					console.log("for the length of the last generation itself:"+lgl);		
+					for(let i = lgl-1; i > 0 ; i--)
 						{
+						console.log("at index [i](order)"+i);		
 						//this is the array from calling
-						returnedArray.push(lastGen.find(x=>x.generation === lastGen[i].generation && x.order === lastGen[i].order).whatIwant(desiredObjectChange.value[i]));
-						returnedArray.flat(infinity);
+						PLog("we push into the return array - an array returned by whatIwant on an cell at generation:"+g+" and order"+i);
+						returnedArray.push(lastGen.find(x=>x.order === i).whatIwant(desiredObjectChange.value, returnedArray));
+						console.log("%c we HAVE JUST pushed into the return array - an array returned by whatIwant on an cell at generation:"+g+" and order"+i, "color:green, font-size 40px");
+						console.log("we are on this cell");
+						console.log(this);
+						console.log(returnedArray);
+						console.log("now flattening that:");
+						console.log(returnedArray);
 					}
+					console.log("we are finished with a column returning returnArray");
+					console.log(returnedArray);
+
 					//we finished a colummn at this point -- we are returning an array up
 					return returnedArray;
 
-				}	
+				}
+				return returnArray; // returned array vs return array... 
 			}
+			return "no really, WHAT??";
 		},
-		nudge: function(value, index, isPositive, type)
+		nudge: function(value ,arrayIndex, Nudgeindex, isPositive, type)
 			{
+	
 			if(isPositive)
 				{
-				value+=(Math.random(0,1)/(index+1));
+				value+=(Math.random(0,1)/(Nudgeindex+1));
+				Sigmoid(value);
 			}
 			else
 				{	
-				value+=(Math.random(-1,1)/(index+1));
+				value+=(Math.random(-1,1)/(Nudgeindex+1));
+				Sigmoid(value);
+
 			}
 			let copyArray = [];
 			if(type == "weights")
@@ -705,9 +761,7 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 				{
 				return value;
 			}
-			copyArray[index] = value;
-			console.log("copyArray is");
-			console.log(copyArray);
+			copyArray.splice(arrayIndex,1,value);
 			return copyArray;
 		},
 		modulate:function(array, type)
@@ -896,8 +950,6 @@ function* colorRotate()
 }
 function arrayMultiply(array1, array2)
 	{
-	console.log(array1);
-	console.log(array2);	
 	let result = 0;	
 	let length = array1.length;
 	if(array2.length != length)
@@ -910,6 +962,45 @@ function arrayMultiply(array1, array2)
 		result+= array1[a]*array2[a];
 	}
 	return result;
+}
+
+function compareSmallnumbers(operation, number1, number2)
+	{ 
+	let compareEpsilon = Number.EPSILON;
+  	CalcDiff = Math.abs(number1*100000 - number2*100000);
+	let isBigger = CalcDiff > compareEpsilon;
+	let isSmaller = CalcDiff<compareEpsilon;
+ 	 switch(operation)
+  		{
+   		 case "isBigger":
+    		return isBigger;
+    	case "isSmaller":
+    		return isSmaller;
+    	default: 
+    		return isSmaller;
+    	}
+    return false;
+}
+function Flat(array)
+	{
+	let flatten = function(array, bucket)
+		{
+		for(let i = 0; i<array.length;i++)
+			{
+			if(Array.isArray(array[i]))
+				{
+				flatten(array[i], bucket);
+			}
+			else
+				{
+				bucket.push(array[i]);
+			}	
+		}
+	}
+	let flatttenedArray = [];
+	flatten(array, flatttenedArray);
+	return flatttenedArray;
+
 }
 function createDisplayCellDiv(cell)
 	{
@@ -950,7 +1041,19 @@ let mode = {
 	answers:["NO", "I Don't Know", "Yes"], //last array still working on the details - placeholder
 	input:[], //defined as [number, {interface}] where interface... magic?
 }
-let brain = createBrain(3,4, mode);
+let prompt1 = window.prompt("generation count?");
+let prompt2 = window.prompt("order count?");
+console.log(prompt1)
+console.log("that was a prompt");
+if(prompt1 == NaN)
+	{
+	prompt1 == 1;
+}
+if(prompt2 == NaN)
+	{
+	prompt2 == 1;
+}
+let brain = createBrain(prompt1,prompt2, mode);
 window.onload = function()
 	{	
 	brain.displayBrain();
