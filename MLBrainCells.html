@@ -199,7 +199,8 @@ function createBrain(cellColumnCount, cellRowCount, options)
 				console.dir(answerCell);
 				console.dir(answer);
 				console.count("answer e loop")
-				arrayOfUpDateObjectsForCell= Clean(Flat(arrayOfUpDateObjectsForCell.push(Flat(answerCell.whatIwant(answer[e], []),)))); 
+				let returnArray = [];
+				arrayOfUpDateObjectsForCell= Clean(Flat(arrayOfUpDateObjectsForCell.push(Flat(answerCell.whatIwant(answer[e], returnArray),)))); 
 
 				console.log("array of update cells after cleaning up are:");
 			}
@@ -316,6 +317,7 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 		generation:generation,
 		order:order,
 		nextGenerationTargetKeys:[],
+		lastGenerationTargetKeys:[],
 		answerBool: false,
 		position:position,
 		totalValue: function()
@@ -377,6 +379,9 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 				}
 				else{console.error(correctCellIndex);}
 			}
+			
+				
+			
 		},
 		drawSelf: function()
 			{
@@ -571,14 +576,9 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 			return this.value * 50;
 		},
 		whatIwant:function(answerValue, returnArray)
-			{
-			if(answerValue ===undefined)
-				{
-				console.trace(answerValue);	
-				}	
+			{	
 			PLog("want I want called on:"+this.ID);	
 			console.log("answer value is:"+answerValue);
-
 			let desiredWeights = this.weights;
 			let desiredBias = this.bias;
 			let desiredActivations = this.activations;
@@ -589,7 +589,21 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 				ID:this.ID,
 				weights:this.weights,
 				bias:0,
-				activations:this.activations
+				activations:this.activations,
+				value:answerValue,
+				combine:function(yourCloneFriend)
+					{
+					this.bias = (1/2).	
+					cWeight = yourCloneFriend.weights[Symbol.iterator]();
+					cActivations = yourCloneFriend.activations[Symbol.iterator]();
+					this.weights.foreach(x=> (1/2)*Math.pow( (x+cWeight.next().value), 2)   );
+					this.activaitons.foreach(y=> (1/2)*Math.pow( (x+cActivations.next().value), 2)   );
+					this.recalculateValue();
+				},
+				recalculateValue:function()	
+					{
+					this.value = Sigmoid(arrayMultiply(this.weights, this.activations)+this.bias);
+				}	
 			}
 	
 			for(let k = 0; k< this.weights.length; k++)
@@ -648,82 +662,63 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 				desiredObjectChange.activations[k] = desiredActivations[k];
 				desiredObjectChange.value = Sigmoid(arrayMultiply(desiredObjectChange.weights, desiredObjectChange.activations)+desiredObjectChange.bias);
 			}
+			returnArray.push(desiredObjectChange);
 
 			//that was this object - simple stuff, now we need to call this function
-			if(returnArray.length > 0)
+	
+			if(Array.isArray(cell.lastGenerationTargetKeys) && cell.lastGenerationTargetKeys.length)
 				{
-				PLog("this greater than zero, so we must be in a return somewhere");
-				console.log(this)	
-				console.log("doing some cleanup.");	
-				console.log("in a recursion");
-				returnArray = Flat(returnArray);	
-				let old = returnArray.find(x=>x.ID === desiredObjectChange.ID);
-				if(old)
-					{
-					console.log("is old");		
-					old.bias/=desiredObjectChange.bias*2;	
-					for(let o=0;o<desiredObjectChange.weights.length;o++)
+				cell.lastGenerationTargetKeys.forEach(x=> returnArray.push(brain.cellArray[x].whatIwant(desiredObjectChange.activations[x], returnArray)));	
+				return Flat(returnArray);
+			}
+			else  
+				{
+				returnArray.push(desiredObjectChange);		
+				return Flat(returnArray);
+			}
+			
+
+/*
+
+
+					console.log("cell generation is not at the end - which means we  can go further down.");
+					//we haven't reached the end yet.
+					console.log(lastGen);
+					let lg=lastGen[0].generation;
+					if(lastGen)
 						{
-						old.weights[o]/=desiredObjectChange.weights[o]*2;
-                        old.activations[o]/=desiredObjectChange.activations[0]*2;
-					}
-				}
-				else
-					{
-					console.log("pushing desired object change since it is new to the array");	
-					returnArray.push(desiredObjectChange);
-				}
-			}
-			else
-				{
-				console.log("pushing desired object change since returnArray.length is zero");		
-				returnArray.push(desiredObjectChange);
-			}
 
-
-
-
-
-			let lastGen = brain.cellArray.filter(x=>x.generation === this.generation-1);
-
-			let lgl = lastGen.length;
-			let rowLength = brain.cellrows;
-				let tgl = brain.cellArray.find(x=>x.generation === cell.generation).length;
-			if(cell.generation == 0)  
-				{
-				return returnArray;
-			}
-
-			else
-				{
-				console.log("cell generation is not at the end - which means we  can go further down.");
-				//we haven't reached the end yet.
-				let returnedArray = [];	
-				console.log(lastGen);
-				let lg=lastGen[0].generation;
-				if(lastGen)
-					{
-					console.log("lastGen is:");
-					console.log(lastGen);	
-					for(let r = 0; r < brain.cellRows; r++)
-						{
-						console.log("at r"+r);	
-						console.log(lgl);
 						for(let g = lgl-1; g >= 0 ; g--)
 							{
 							console.log("at generation"+g);		
 							returnedArray.push(lastGen[g].whatIwant(desiredObjectChange.activations[g], returnArray));
 						}
-					//	returnArray.push(brain.cellArray.find(x=>x.ID === x.ID++).whatIwant(answerValue, returnArray));
+						//	returnArray.push(brain.cellArray.find(x=>x.ID === x.ID++).whatIwant(answerValue, returnArray));
+						
 					}
+					returnedArray = Flat(returnedArray);
+					return returnedArray;
 				}
-				returnedArray = Flat(returnedArray);
-				return returnedArray;
+				else if(!cell.answerBool)
+					{
+					for(let g = lgl-1;g>= 0;g--)	
+						{
+						returnedArray.push(lastGen[g].whatIwant(desiredObjectChange.activations[g], returnArray));
+
+					}	
+
+					if(cell.order < brain.cellrows)
+						{
+						returnedArray.push(lastGen[g].whatIwant(answerValue, returnArray));
+						return Flat(ReturnedArray);	
+					}
+				return Flat(returnArray);
+				}
 			}
-		
-			return ["somehow i got in here, I should never reach this point though..."];
+
+		return ["somehow i got in here, I should never reach this point though..."];
 			
-				/*for(let g = lg; g>0;g--)
+				*//*for(let g = lg; g>0;g--)
 					{
 					console.log("we are looking at generation:"+lastGen[g].generation+"order"+lastGen[g].order);	
 					console.log("at index [g](generations)"+g);	
@@ -829,7 +824,9 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 			posObject.radius = lastGen[r].radius;
 			lastGen[r].nextGenerationTargetKeys.push(cell.ID);
 			cell.targets.push(posObject);
+			cell.lastGenerationTargetKeys.push(lastGen[r].ID);
 		}
+
 	}
 	return cell;	
 }
@@ -897,8 +894,9 @@ function Clean(array)
 	for(let i=0; i< brain.cellArray.length;i++)
 		{
 		let bucket = array.filter(x=>x.ID === array[i]);
+		
 		for(let j=0;j<bucket.length;j++)
-			{
+			{	
 			bucket[0].bias /=bucket[j].bias*2;
 			for(let k=0;k<bucket[0].activations.length;k++)
 				{
@@ -1029,6 +1027,8 @@ function compareSmallnumbers(operation, number1, number2)
 }
 function Flat(array)
 	{
+	console.log(array);	
+	let holdBucket = [];
 	let flatten = function(array, bucket)
 		{
 		for(let i = 0; i<array.length;i++)
@@ -1039,13 +1039,13 @@ function Flat(array)
 			}
 			else
 				{
-				bucket.push(array[i]);
-			}	
+				holdBucket.push(array[i]);
+			}
 		}
 	}
 	let flatttenedArray = [];
 	flatten(array, flatttenedArray);
-	return flatttenedArray;
+	return holdBucket;
 
 }
 
