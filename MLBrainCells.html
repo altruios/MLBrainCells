@@ -662,13 +662,17 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 				desiredObjectChange.activations[k] = desiredActivations[k];
 				desiredObjectChange.value = Sigmoid(arrayMultiply(desiredObjectChange.weights, desiredObjectChange.activations)+desiredObjectChange.bias);
 			}
+
+
+
 			returnArray.push(desiredObjectChange);
 
 			//that was this object - simple stuff, now we need to call this function
 	
 			if(Array.isArray(cell.lastGenerationTargetKeys) && cell.lastGenerationTargetKeys.length)
 				{
-				cell.lastGenerationTargetKeys.forEach(x=> returnArray.push(brain.cellArray[x].whatIwant(desiredObjectChange.activations[x], returnArray)));	
+				let nextActivation = desiredObjectChange.activations[Symbol.iterator]();	
+				cell.lastGenerationTargetKeys.forEach(x=> returnArray.push(brain.cellArray[x].whatIwant(nextActivation.next().value, returnArray)));	
 				return Flat(returnArray);
 			}
 			else  
