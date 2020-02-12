@@ -198,14 +198,42 @@ function createBrain(cellColumnCount, cellRowCount, options)
 				let answerCell = brain.cellArray.find(x=>x.order == e && x.answerBool === true);
 				console.dir(answerCell);
 				console.dir(answer);
-				console.count("answer e loop")
-				let returnArray = [];
-				arrayOfUpDateObjectsForCell= Clean(Flat(arrayOfUpDateObjectsForCell.push(Flat(answerCell.whatIwant(answer[e], returnArray),)))); 
+				console.count("answer e loop");
+				let returnBucket = [];
 
+				arrayOfUpDateObjectsForCell.push(answerCell.whatIwant(answer[e], returnBucket)); 
+
+
+				PLog("returned item at top level!");
+				console.log(arrayOfUpDateObjectsForCell);
 				console.log("array of update cells after cleaning up are:");
+				console.log(arrayOfUpDateObjectsForCell);
 			}
 			console.log(arrayOfUpDateObjectsForCell);
-			console.count("that was teh array for that answer cell, there should be 3 calls of this one!!!!");
+			combined = [];
+			for(let i=0; i<arrayOfUpDateObjectsForCell.length;i++)
+				{
+				for(let k = 0; k<arrayOfUpDateObjectsForCell[i].length; k++)
+					{	
+					let search = arrayOfUpDateObjectsForCell[i].filter(x=>x.ID == k);	
+					if(search)
+						{
+						for(let j=0; j<search.length; j++)
+							{
+							search[0].combine(search[j]);
+						}
+						combined.push(search[0]);
+					}
+				}
+			}
+			console.log("combined");
+			console.log(combined);
+			console.log("arrayOfUpDateObjectsForCell");
+			console.log(arrayOfUpDateObjectsForCell);
+			arrayOfUpDateObjectsForCell = combined;
+
+
+
 			for(let f=0;f<arrayOfUpDateObjectsForCell.length;f++) 
 				{
 				console.count("counting up the length - it is"+f);	
@@ -578,6 +606,10 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 		whatIwant:function(answerValue, returnArray)
 			{	
 			PLog("want I want called on:"+this.ID);	
+			
+			
+
+
 			console.log("answer value is:"+answerValue);
 			let desiredWeights = this.weights;
 			let desiredBias = this.bias;
@@ -593,11 +625,12 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 				value:answerValue,
 				combine:function(yourCloneFriend)
 					{
-					this.bias = (1/2).	
-					cWeight = yourCloneFriend.weights[Symbol.iterator]();
-					cActivations = yourCloneFriend.activations[Symbol.iterator]();
-					this.weights.foreach(x=> (1/2)*Math.pow( (x+cWeight.next().value), 2)   );
-					this.activaitons.foreach(y=> (1/2)*Math.pow( (x+cActivations.next().value), 2)   );
+					console.log("combining called on id:"+this.ID);		
+					this.bias = (1/2)*Math.pow(this.bias+yourCloneFriend.bias,2);	
+					let cWeight = yourCloneFriend.weights[Symbol.iterator]();
+					let cActivations = yourCloneFriend.activations[Symbol.iterator]();
+					this.weights.forEach(x=> (1/2)*Math.pow( (x+cWeight.next().value), 2)   );
+					this.activations.forEach(y=> (1/2)*Math.pow( (y+cActivations.next().value), 2)   );
 					this.recalculateValue();
 				},
 				recalculateValue:function()	
@@ -664,92 +697,47 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 			}
 
 
+			console.log("if it is a number?")
 
-			returnArray.push(desiredObjectChange);
-
+			let combineObject = returnArray.find(x=>x.ID === desiredObjectChange.ID);
+			if(combineObject)
+				{
+				combineObject.combine(desiredObjectChange);
+			}
+			else
+				{	
+				returnArray.push(desiredObjectChange);
+			
+		}		
+			console.log("pushing into the returnArray");
+			console.dir(desiredObjectChange);
+			console.dir(returnArray);
 			//that was this object - simple stuff, now we need to call this function
 	
 			if(Array.isArray(cell.lastGenerationTargetKeys) && cell.lastGenerationTargetKeys.length)
-				{
-				let nextActivation = desiredObjectChange.activations[Symbol.iterator]();	
-				cell.lastGenerationTargetKeys.forEach(x=> returnArray.push(brain.cellArray[x].whatIwant(nextActivation.next().value, returnArray)));	
-				return Flat(returnArray);
+				{			
+				console.count("number of recursions:");
+				console.log(cell);
+				console.log(returnArray);	
+				let nextActivation = desiredObjectChange.activations[Symbol.iterator]();
+				cell.lastGenerationTargetKeys.forEach(x=> brain.cellArray[x].whatIwant(nextActivation.next().value, returnArray));	
+				console.log("at the end of this recursive level - we have a bin left over of:");
+				return returnArray;
+
+
+
 			}
 			else  
 				{
-				returnArray.push(desiredObjectChange);		
-				return Flat(returnArray);
+				console.log("this should only reach this point at zero:"+cell.generation);
+				console.log(desiredObjectChange);
+				console.log("was desired object");	
+				console.log('returnArray is:');
+				console.log(returnArray);
+				return;		
 			}
 			
 
-/*
-
-
-					console.log("cell generation is not at the end - which means we  can go further down.");
-					//we haven't reached the end yet.
-					console.log(lastGen);
-					let lg=lastGen[0].generation;
-					if(lastGen)
-						{
-
-						for(let g = lgl-1; g >= 0 ; g--)
-							{
-							console.log("at generation"+g);		
-							returnedArray.push(lastGen[g].whatIwant(desiredObjectChange.activations[g], returnArray));
-						}
-						//	returnArray.push(brain.cellArray.find(x=>x.ID === x.ID++).whatIwant(answerValue, returnArray));
-						
-					}
-					returnedArray = Flat(returnedArray);
-					return returnedArray;
-				}
-				else if(!cell.answerBool)
-					{
-					for(let g = lgl-1;g>= 0;g--)	
-						{
-						returnedArray.push(lastGen[g].whatIwant(desiredObjectChange.activations[g], returnArray));
-
-					}	
-
-					if(cell.order < brain.cellrows)
-						{
-						returnedArray.push(lastGen[g].whatIwant(answerValue, returnArray));
-						return Flat(ReturnedArray);	
-					}
-				return Flat(returnArray);
-				}
-			}
-
-		return ["somehow i got in here, I should never reach this point though..."];
-			
-				*//*for(let g = lg; g>0;g--)
-					{
-					console.log("we are looking at generation:"+lastGen[g].generation+"order"+lastGen[g].order);	
-					console.log("at index [g](generations)"+g);	
-					for(let i =0; i < lgl ; i++)
-						{
-						console.log("at index [i](order)"+i);		
-						//this is the array from calling
-						
-						returnedArray.push(lastGen.find(x=>x.generation === g).whatIwant(desiredObjectChange.value, returnedArray));
-						PLog("we successfully just pushed into the return array - an array returned by whatIwant on an cell at generation:"+g+" and order"+i);
-						console.log("we are at generation:"+cell.generation+" order:"+cell.order);
-					}
-					console.log("last generation length reached":lgl.length);
-					console.log("at cell:"+cell.ID+"generation:"+cell.generation+"order"+cell.order);
-					//we finished a colummn at this point -- we are returning an array up
-					returnedArray = Flat(returnedArray);
-					return returnedArray; // this seems to be the unintended end to the recursion.
-
-				}
-				console.log("last generation length reached":lgl.length);	
-				returnArray = Flat(returnArray);	
-				return returnArray; // returned array vs return array... 
-			}
-			else
-				{
-				return "no really, WHAT??";
-			}*/
 		},
 
 
