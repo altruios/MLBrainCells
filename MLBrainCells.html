@@ -139,15 +139,10 @@ function createBrain(cellColumnCount, cellRowCount, options)
 				for(let c=0;c<data[b].questions.length;c++)
 					{
 					brain.attachInputLayer(data[b].questions[c]);
-					console.log(brain);
-					console.log("that was brain");
 					brain.updateForward();
-					console.log(data[b].answers[c]);
 					let direction = brain.determinDirection(data[b].answers[c]); //return an array of updateObject with determined weights bias value adjustments, which each cell gets updated order should be from generation by column;
 					for(let d=0;d<direction.length;d++)
 						{
-						console.log(direction);	
-						console.log(brain.cellArray);	
 						brain.cellArray.find(x=>x.ID === direction[d].ID).adjust(direction[d]);
 					}
 					brain.updateForward();
@@ -158,6 +153,9 @@ function createBrain(cellColumnCount, cellRowCount, options)
 			}
 			console.log("all training data done");
 			alert("win?");
+			console.log(brain.cellArray);
+			console.log("brain");
+
 		},
 		testInput: function(inputActivation)
 			{
@@ -175,98 +173,23 @@ function createBrain(cellColumnCount, cellRowCount, options)
 		},
 		determinDirection:function(answer)
 			{// answer is the array of values of each answer cell we want as a result
-			let summed = [];
-			console.log("here we go!");	
-
-			for(a=0;a<brain.cellArray.length;a++)
-				{
-				let summedObject = 
-					{
-					ID:"",
-					weights:[],
-					bias:[],
-				};	
-				summed.push(summedObject);	
-			}
-			console.log("dummy array made;");	
-			console.log(answer);
-			console.log("that was answer");
 			let arrayOfUpDateObjectsForCell = [];
 			for(let e=0; e<answer.length; e++)
 				{
-				console.log("in the e loop");	
 				let answerCell = brain.cellArray.find(x=>x.order == e && x.answerBool === true);
-				console.dir(answerCell);
-				console.dir(answer);
-				console.count("answer e loop");
 				let returnBucket = [];
 
 				arrayOfUpDateObjectsForCell.push(answerCell.whatIwant(answer[e], returnBucket)); 
 
 
-				PLog("returned item at top level!");
-				console.log(arrayOfUpDateObjectsForCell);
-				console.log("array of update cells after cleaning up are:");
-				console.log(arrayOfUpDateObjectsForCell);
 			}
-			console.log(arrayOfUpDateObjectsForCell);
-			combined = [];
-			for(let i=0; i<arrayOfUpDateObjectsForCell.length;i++)
-				{
-				for(let k = 0; k<arrayOfUpDateObjectsForCell[i].length; k++)
-					{	
-					let search = arrayOfUpDateObjectsForCell[i].filter(x=>x.ID == k);	
-					if(search)
-						{
-						for(let j=0; j<search.length; j++)
-							{
-							search[0].combine(search[j]);
-						}
-						combined.push(search[0]);
-					}
-				}
-			}
-			console.log("combined");
-			console.log(combined);
-			console.log("arrayOfUpDateObjectsForCell");
-			console.log(arrayOfUpDateObjectsForCell);
-			arrayOfUpDateObjectsForCell = combined;
-
-
-
-			for(let f=0;f<arrayOfUpDateObjectsForCell.length;f++) 
-				{
-				console.count("counting up the length - it is"+f);	
-				summed[f].ID = arrayOfUpDateObjectsForCell[f].ID;
-				for (let index = 0; index< arrayOfUpDateObjectsForCell[f].length;index++)
-					{
-					for(let w=0; w<arrayOfUpDateObjectsForCell[f].weights.length;w++)
-						{
-						console.count("counting up the weights - it is"+w);		
-						summed[f].weights[w] += arrayOfUpDateObjectsForCell[f].weights[w];
-					}
-				}
-				for(let b=0; b<arrayOfUpDateObjectsForCell[f].bias.length;b++)
-					{
-					console.count("counting up the bias - it is"+w);								
-					summed[f].bias[b] += arrayOfUpDateObjectsForCell[f].bias[b];
-				}
-			}
-			for(let s=0;s<summed.length;s++)
-				{
-				console.count("counting up the sum - it is"+s);								
-				for(let sw=0; summed[s].weights.length;sw++)	
-					{
-					console.count("counting up the summedWeights - it is"+sw);									
-					Sigmoid(summed[s].weights[sw]);
-				}
-				for(let sb=0; sb<summed[s].bias.length;sb++)
-					{
-					console.count("counting up the bias - it is"+sb);										
-					Sigmoid(summed[s].bias[sb]);
-				}
-			}	
-		return summed;
+	
+			let list = Flat(arrayOfUpDateObjectsForCell);
+			console.log(list);
+			console.log("cleaning list");
+			let realList = Clean(list);
+			console.log("Real list^");
+			return realList;
 		}
 	};
 
@@ -549,9 +472,6 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 		},
 		randomizeWeights:function(updateDiv)
 			{
-			PLog(this.ID);	
-			console.table(this.weights);
-			console.log("weights go in up top, down below are changes");
 			for(let a=0;a<this.weights.length;a++)
 				{
 				let target = this.targets[a];
@@ -605,16 +525,12 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 		},
 		whatIwant:function(answerValue, returnArray)
 			{	
-			PLog("want I want called on:"+this.ID);	
-			
-			
 
 
-			console.log("answer value is:"+answerValue);
 			let desiredWeights = this.weights;
 			let desiredBias = this.bias;
 			let desiredActivations = this.activations;
-			let error =(1/2)*Math.pow(cell.value-answerValue,2);
+			let error = (1/2)*Math.pow(cell.value-answerValue,2);
 			//this calls whatIreallyReallyWant eventaully
 			let desiredObjectChange = 
 				{
@@ -625,16 +541,22 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 				value:answerValue,
 				combine:function(yourCloneFriend)
 					{
-					console.log("combining called on id:"+this.ID);		
-					this.bias = (1/2)*Math.pow(this.bias+yourCloneFriend.bias,2);	
+					if(yourCloneFriend == false)
+						{
+						return;
+					}	
+					console.count("combining");	
+					this.bias = Sigmoid((1/2)*Math.pow(this.bias+yourCloneFriend.bias,2));	
 					let cWeight = yourCloneFriend.weights[Symbol.iterator]();
 					let cActivations = yourCloneFriend.activations[Symbol.iterator]();
-					this.weights.forEach(x=> (1/2)*Math.pow( (x+cWeight.next().value), 2)   );
-					this.activations.forEach(y=> (1/2)*Math.pow( (y+cActivations.next().value), 2)   );
+					this.weights.forEach(x=> Sigmoid((1/2)*Math.pow( (x+cWeight.next().value), 2)  ) );
+					this.activations.forEach(y=> Sigmoid((1/2)*Math.pow( (y+cActivations.next().value), 2) )  );
 					this.recalculateValue();
+					return this;
 				},
 				recalculateValue:function()	
 					{
+
 					this.value = Sigmoid(arrayMultiply(this.weights, this.activations)+this.bias);
 				}	
 			}
@@ -694,46 +616,37 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 				desiredObjectChange.bias = desiredBias;
 				desiredObjectChange.activations[k] = desiredActivations[k];
 				desiredObjectChange.value = Sigmoid(arrayMultiply(desiredObjectChange.weights, desiredObjectChange.activations)+desiredObjectChange.bias);
+			
 			}
 
 
-			console.log("if it is a number?")
 
 			let combineObject = returnArray.find(x=>x.ID === desiredObjectChange.ID);
 			if(combineObject)
 				{
 				combineObject.combine(desiredObjectChange);
+				
+
+
 			}
 			else
 				{	
 				returnArray.push(desiredObjectChange);
 			
 		}		
-			console.log("pushing into the returnArray");
-			console.dir(desiredObjectChange);
-			console.dir(returnArray);
+			
 			//that was this object - simple stuff, now we need to call this function
 	
 			if(Array.isArray(cell.lastGenerationTargetKeys) && cell.lastGenerationTargetKeys.length)
-				{			
-				console.count("number of recursions:");
-				console.log(cell);
-				console.log(returnArray);	
+				{				
 				let nextActivation = desiredObjectChange.activations[Symbol.iterator]();
 				cell.lastGenerationTargetKeys.forEach(x=> brain.cellArray[x].whatIwant(nextActivation.next().value, returnArray));	
-				console.log("at the end of this recursive level - we have a bin left over of:");
 				return returnArray;
-
-
 
 			}
 			else  
 				{
-				console.log("this should only reach this point at zero:"+cell.generation);
-				console.log(desiredObjectChange);
-				console.log("was desired object");	
-				console.log('returnArray is:');
-				console.log(returnArray);
+				
 				return;		
 			}
 			
@@ -767,9 +680,9 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 			}
 			else
 				{
-				return value;
+				return Sigmoid(value);
 			}
-			copyArray.splice(arrayIndex,1,value);
+			copyArray.splice(arrayIndex,1,Sigmoid(value));
 			return copyArray;
 		},
 		modulate:function(array, type)
@@ -878,27 +791,29 @@ function CreateTestData(Count, inputSize, outputSize, objectCount)
 
 function Clean(array)
 	{
-	console.log(array);
-	console.log("array is");	
-	let matchedIds = [];
-	let bucketTrue = [];
-
-	for(let i=0; i< brain.cellArray.length;i++)
+	let rArray = [];	
+	let uniuqeKeys = new Set(array.map(x=>x.ID)).length;
+	console.log(uniuqeKeys);
+	while(rArray.length < uniuqeKeys)
+	array.foreach( (x)=>
 		{
-		let bucket = array.filter(x=>x.ID === array[i]);
-		
-		for(let j=0;j<bucket.length;j++)
-			{	
-			bucket[0].bias /=bucket[j].bias*2;
-			for(let k=0;k<bucket[0].activations.length;k++)
-				{
-				buckets[0].activations[k] /= buckets[j].activations[k]*2;
-				bucket[0].weights[k] /= bucket[j].weights[k]*2;
-			}
-			bucketTrue.push(bucket[0]);
+		let nextItem = array[Symbol.iterator]();
+		let search = nextItem.next().value;
+		while(x.ID != search.ID)
+			{
+			search = nexttItem.next().value;
+			if(search == undefined){search = {ID:'notreal'}; break;}
 		}
-		return bucketTrue;
-	}
+		if(search.ID == x.ID)
+			{
+			rArray.push(x.combine(search));
+			array = array.splice(array.indexOf(search));
+		}
+
+	});
+	console.log(rArray);
+	return rArray;
+	
 }
 function* makeID()
 	{
