@@ -185,10 +185,7 @@ function createBrain(cellColumnCount, cellRowCount, options)
 			}
 	
 			let list = Flat(arrayOfUpDateObjectsForCell);
-			console.log(list);
-			console.log("cleaning list");
 			let realList = Clean(list);
-			console.log("Real list^");
 			return realList;
 		}
 	};
@@ -545,7 +542,6 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 						{
 						return;
 					}	
-					console.count("combining");	
 					this.bias = Sigmoid((1/2)*Math.pow(this.bias+yourCloneFriend.bias,2));	
 					let cWeight = yourCloneFriend.weights[Symbol.iterator]();
 					let cActivations = yourCloneFriend.activations[Symbol.iterator]();
@@ -792,26 +788,18 @@ function CreateTestData(Count, inputSize, outputSize, objectCount)
 function Clean(array)
 	{
 	let rArray = [];	
-	let uniuqeKeys = new Set(array.map(x=>x.ID)).length;
-	console.log(uniuqeKeys);
-	while(rArray.length < uniuqeKeys)
-	array.foreach( (x)=>
+	array.forEach((x)=>
 		{
-		let nextItem = array[Symbol.iterator]();
-		let search = nextItem.next().value;
-		while(x.ID != search.ID)
+		let search = rArray.find(y=>y.ID ===x.ID);	
+		if(search === undefined)
 			{
-			search = nexttItem.next().value;
-			if(search == undefined){search = {ID:'notreal'}; break;}
+			rArray.push(x);
 		}
-		if(search.ID == x.ID)
+		else
 			{
-			rArray.push(x.combine(search));
-			array = array.splice(array.indexOf(search));
+			rArray[rArray.indexOf(search)].combine(x);
 		}
-
 	});
-	console.log(rArray);
 	return rArray;
 	
 }
@@ -936,13 +924,13 @@ function Flat(array)
 	{
 	console.log(array);	
 	let holdBucket = [];
-	let flatten = function(array, bucket)
+	let flatten = function(array)
 		{
 		for(let i = 0; i<array.length;i++)
 			{
 			if(Array.isArray(array[i]))
 				{
-				flatten(array[i], bucket);
+				flatten(array[i]);
 			}
 			else
 				{
