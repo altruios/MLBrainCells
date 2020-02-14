@@ -147,9 +147,7 @@ function createBrain(cellColumnCount, cellRowCount, options)
 					}
 					brain.updateForward();
 					brain.displayBrain();
-					console.log("one sample done."+c+"moving on to next");
 				}	
-				console.log("one input data done"+b+"is what we did. YAY!!!!");
 			}
 			console.log("all training data done");
 			alert("win?");
@@ -480,7 +478,6 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 				this.weights[a] = Math.random(0,1)*randomSign;	
 				this.drawLineToTarget(target,a, this.weights[a]);
 			}
-			console.table(this.weights);
 			if(updateDiv)
 				{
 				let updatedDiv = createDisplayCellDiv(cell);
@@ -922,7 +919,6 @@ function compareSmallnumbers(operation, number1, number2)
 }
 function Flat(array)
 	{
-	console.log(array);	
 	let holdBucket = [];
 	let flatten = function(array)
 		{
