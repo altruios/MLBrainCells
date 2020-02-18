@@ -132,6 +132,7 @@ function createBrain(cellColumnCount, cellRowCount, options)
 			console.log("train test");
 			// we we take in the training data, it should come in the form of an of an array of object with two properties, inputs, desired answers.
 			// we need to look at each answer neuorn - LookBack should be a recursive called function that calles itself on an cell in a previous generation/order
+		//	let updateArray = [];
 			for (let b=0; b< data.length; b++)// for the length of the training data - I.E. we are going assume we are getting many relativly shortly indexed arrays
 				{
 				if(data[b].answers.length != data[b].questions.length)
@@ -141,14 +142,25 @@ function createBrain(cellColumnCount, cellRowCount, options)
 					brain.attachInputLayer(data[b].questions[c]);
 					brain.updateForward();
 					let direction = brain.determinDirection(data[b].answers[c]); //return an array of updateObject with determined weights bias value adjustments, which each cell gets updated order should be from generation by column;
-					for(let d=0;d<direction.length;d++)
+/*					for(let d=0;d<direction.length;d++)
 						{
+						console.log(direction);	
+						console.log(direction[d]);
+						console.log(brain.cellArray.find(x=>x.ID === direction[d].ID));
 						brain.cellArray.find(x=>x.ID === direction[d].ID).adjust(direction[d]);
-					}
+						console.log("adjusted cell:");
+						console.log(brain.cellArray.find(x=>x.ID === direction[d].ID));
+
+					}*/
+
+					direction.forEach(x=>brain.cellArray.find(y=>y.ID == x.ID).adjust(x)); 
 					brain.updateForward();
 					brain.displayBrain();
+
+
 				}	
 			}
+	//		updateArray.forEach(x=>brain.cellArray.find(y=>y.ID ===x.ID).adjust(x));
 			console.log("all training data done");
 			alert("win?");
 			console.log(brain.cellArray);
@@ -565,19 +577,22 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 	
 					let positiveRange = false;
 					if(desiredWeights[k] < 0){ positiveRange = true;}	
-					let nudgedWeightArray = this.nudge(desiredWeights[k],k,l,positiveRange, "weights");	//returns a copy array to test, with weight adjusted.
+					let nudgedWeightArray = NudgeArray(desiredWeights, k, l, positiveRange);	//returns a copy array to test, with weight adjusted.
 					let testWeightChange = Sigmoid(arrayMultiply(nudgedWeightArray,desiredActivations)+desiredBias);
-					let testWeightError = (1/2)*Math.pow(testWeightChange - answerValue, 2);
-				
+					let testWeightError = (1/nudgedWeightArray.length)*Math.pow(testWeightChange - answerValue, 2);
+			
 					let testWeightResult = compareSmallnumbers('isSmaller', currentError, testWeightError);
 					if(testWeightResult);
 						{
+						console.log("cellID"+cell.ID);
+						console.log("desiredWeights"+desiredWeights);
+						console.log("nudgedWeightsArray"+nudgedWeightArray)
 						desiredWeights = nudgedWeightArray;
 						currentError = testWeightError;
 					}
 					positiveRange=false;
 					if(desiredBias < 0){positiveRange = true;}	
-					let nudgedBiasVal = this.nudge(desiredBias,k,l,positiveRange);
+					let nudgedBiasVal = this.nudge(desiredBias,l,positiveRange);
 					let testBiasChange = Sigmoid(nudgedBiasVal+desiredWeights[k]*desiredActivations[k]);
 					let testBiasError = (1/2)*Math.pow(testBiasChange - answerValue, 2);
 					let testBiastResult = ('isSmaller', currentError, testBiasError);
@@ -588,13 +603,17 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 						currentError = testBiasError;
 					}
 					positiveRange=!!Math.random(0,1)>5;
-					let nudgedAcitivationArray = this.nudge(desiredActivations[k],k,l,positiveRange, "activations");
+			
+					let nudgedAcitivationArray = NudgeArray(desiredActivations,k,l,positiveRange);
+				
 					let testActivationChange = Sigmoid(arrayMultiply(nudgedAcitivationArray,desiredWeights)+desiredBias);
-					let testActivationError = (1/2)*Math.pow(testActivationChange - answerValue, 2);
+					let testActivationError = (1/nudgedAcitivationArray.length)*Math.pow(testActivationChange - answerValue, 2);
 					let testActivationResult = compareSmallnumbers('isSmaller', currentError, testActivationError);
 					if(testActivationResult);
 						{
-						desiredActivations[k] = testActivationChange;	
+						desiredActivations[k] = nudgedAcitivationArray[k];	
+					
+
 						lastError = testActivationError;
 					}
 
@@ -617,9 +636,7 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 			let combineObject = returnArray.find(x=>x.ID === desiredObjectChange.ID);
 			if(combineObject)
 				{
-				combineObject.combine(desiredObjectChange);
-				
-
+				console.log(combineObject);	
 
 			}
 			else
@@ -634,6 +651,7 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 				{				
 				let nextActivation = desiredObjectChange.activations[Symbol.iterator]();
 				cell.lastGenerationTargetKeys.forEach(x=> brain.cellArray[x].whatIwant(nextActivation.next().value, returnArray));	
+
 				return returnArray;
 
 			}
@@ -648,7 +666,7 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 
 
 
-		nudge: function(value ,arrayIndex, Nudgeindex, isPositive, type)
+		nudge: function(value, Nudgeindex, isPositive)
 			{
 	
 			if(isPositive)
@@ -662,21 +680,8 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ar
 				Sigmoid(value);
 
 			}
-			let copyArray = [];
-			if(type == "weights")
-				{
-				copyArray = this.weights;
-			}
-			else if(type == "activations")
-				{
-				copyArray = this.activations;	
-			}
-			else
-				{
-				return Sigmoid(value);
-			}
-			copyArray.splice(arrayIndex,1,Sigmoid(value));
-			return copyArray;
+			return Sigmoid(value);
+			
 		},
 		modulate:function(array, type)
 			{
@@ -756,10 +761,10 @@ function CreateTestData(Count, inputSize, outputSize, objectCount)
 			let answerArray = [];
 			for(let m = 0; m < outputSize; m++)	
 				{
-				let answer = 0;
-				if(Math.random(0,1) > 0.5)	
+				let answer = 1;
+				if(m > 0)	
 					{
-					answer = 1;
+					answer = 0;
 				}
 				answerArray.push(answer);
 			}
@@ -780,7 +785,26 @@ function CreateTestData(Count, inputSize, outputSize, objectCount)
 
 
 //helper functions
+function NudgeArray(array ,arrayIndex, Nudgeindex, isPositive)
+	{
+	let returnArray = [];
+	array.forEach(x=>returnArray.push(x));	
+	let value = returnArray[arrayIndex];
+	
+	if(isPositive)
+				{
+				value+=(Math.random(0,1)/(Nudgeindex+1));
+				value = Sigmoid(value);
+			}
+			else
+				{	
+				value+=(Math.random(-1,1)/(Nudgeindex+1));
+				value = Sigmoid(value);
+			}
 
+	returnArray.splice(arrayIndex,1,value);
+	return returnArray;
+}
 
 function Clean(array)
 	{
@@ -976,7 +1000,7 @@ function createDisplayCellDiv(cell)
 let mode = {
 	growRate:2,
 	randomSeed: "upcomingIdea", // it will vary the order count according to generation
-	answers:["NO", "I Don't Know", "Yes"], //last array still working on the details - placeholder
+	answers:[0,1,2,3,4,5,6,7,8,9], //last array still working on the details - placeholder
 	input:[], //defined as [number, {interface}] where interface... magic?
 }
 let prompt1 = window.prompt("generation count?");
@@ -995,7 +1019,7 @@ let brain = createBrain(prompt1,prompt2, mode);
 window.onload = function()
 	{	
 	brain.displayBrain();
-	const trainingData = CreateTestData(22,200,3,222);
+	const trainingData = CreateTestData(20,100,10,22);
 	window.addEventListener('click', function()
 		{
 	//	brain.testInput(0.5);
@@ -1032,7 +1056,7 @@ window.onload = function()
 					}
 				}
 				catch(e)
-					{
+					{w
 					console.error(e);
 				}
 			}
