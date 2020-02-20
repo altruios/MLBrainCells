@@ -604,7 +604,7 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ma
 					//and the end of the loop, update the error to the new value
 					let errorResult = compareSmallnumbers('isSmaller',lastError, currentError);
 			
-					if(currentError<lastError)
+					if(errorResult)
 						{
 						lastError = currentError;
 					}
