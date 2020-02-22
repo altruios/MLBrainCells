@@ -639,8 +639,8 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ma
 				}
 			}
 			desiredObjectChange.jiggle(bias, 4, fullRange, "bias");
-			desiredObjectChange.activations.forEach(activation=>desiredObjectChange.jiggle(activation,4, positiveRange, "array"));
-			desiredObjectChange.weights.forEach(weight=>desiredObjectChange.jiggle(weight,4,fullRange, "array"));
+			desiredObjectChange.activations.forEach(activation=>desiredObjectChange.jiggle(activation,4, positiveRange, "activations"));
+			desiredObjectChange.weights.forEach(weight=>desiredObjectChange.jiggle(weight,4,fullRange, "weights"));
 			let combineObject = returnArray.find(x=>x.ID === desiredObjectChange.ID);
 			if(!combineObject)
 				{
