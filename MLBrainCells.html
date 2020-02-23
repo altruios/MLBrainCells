@@ -553,18 +553,25 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ma
 		},
 		whatIwant:function(answerValue, returnArray)
 			{	
-			let desiredWeights = this.weights;
-			let desiredBias = this.bias;
-			let desiredActivations = this.activations;
-			let error = (1/2)*Math.pow(answerValue-cell.value,2);
+			let error = (1/2)*Math.pow(answerValue-cell.value, 2);
+			if(error == NaN)
+				{
+				console.error("error with error value");
+				console.error(answerValue);
+				console.error(cell.value);
+				console.error("was values thrown into error");
+			}
 			console.log(error);
 			//this calls whatIreallyReallyWant eventaully
+			console.log(this.activations);
+			console.log(cell.activations);
+			console.log("was activations");
 			let desiredObjectChange = 
 				{
 				ID:this.ID,
-				weights:desiredWeights,
-				bias:desiredBias,
-				activations:desiredActivations,
+				weights:this.weights,
+				bias:this.bias,
+				activations:this.activations,
 				value:answerValue,
 				combine:function(yourCloneFriend)
 					{
@@ -613,11 +620,11 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ma
 						}
 						else if(type == "activations")
 							{
-							desiredObjectChange.splice(desiredObjectChange.activations.indexOf(item),1,item)
+							desiredObjectChange.activations[desiredObjectChange.activations.indexOf(item)] = item;
 						}
 						else if(type == "weights")
 							{
-							desiredObjectChange.splice(desiredObjectChange.weights.indexOf(item),1,item);
+							desiredObjectChange.weights[desiredObjectChange.weights.indexOf(item)] = item;	
 						}
 						console.log("item after assignment is:"+ item);
 						console.dir(desiredObjectChange);
