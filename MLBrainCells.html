@@ -107,8 +107,6 @@ function createBrain(cellColumnCount, cellRowCount, options)
 						{
 						cell.textAnswer();
 					}
-				console.log("cell targets are");
-				console.log(cell.targets);		
 					cell.targets.forEach(target=>cell.drawLineToTarget(target, brain.cellMatrix[Math.max(0, cell.generation-1)].indexOf(target)));
 				});
 			});
@@ -122,7 +120,6 @@ function createBrain(cellColumnCount, cellRowCount, options)
 					{ 
 					cell.calculateSelf(); 
 					cell.propagateActivationUpdate();
-					console.log("drawSelf called");
 					
 				});
 			});	
@@ -139,14 +136,45 @@ function createBrain(cellColumnCount, cellRowCount, options)
 			// we need to look at each answer neuorn - LookBack should be a recursive called function that calles itself on an cell in a previous generation/order
 			//	let updateArray = [];\
 
-			data.questions.forEach((question)  => 
+		/*	data.questions.forEach((question)  => 
 				{
 				brain.attachInputLayer(question);
+				PLog("starting cellMatrix");
+				brain.cellMatrix.forEach(cellArray=>console.table(cellArray.map(x=>x.value)));
 				let direction = brain.determinDirection(data.answers[data.questions.indexOf(question)]);
 				brain.cellMatrix.forEach(cellArray => cellArray.forEach(cell=> cell.adjust(direction.find(x=>x.ID === cell.ID))));
 				brain.updateForward();	
-				brain.displayBrain();		
-			});
+				brain.displayBrain();
+				window.alert("question answered:");
+				PLog("trained cell matrix");
+				brain.cellMatrix.forEach(cellArray=>console.table(cellArray.map(x=>x.value)));
+			});*/
+			let trainViewer = window.setInterval(function()
+				{
+				if(data.questions.length == 0)
+					{
+					window.alert("done training!");	
+					window.clearInterval(trainViewer);	
+				}
+				else
+					{
+					brain.displayBrain();
+					ctx.font = "50px";
+					ctx.fillText("training interval"+data.questions.length,100,100);	
+
+					brain.attachInputLayer(data.questions[0]);	
+					let direction = brain.determinDirection(data.answers[0]);
+					brain.cellMatrix.forEach(cellArray => cellArray.forEach(cell=> cell.adjust(direction.find(x=>x.ID === cell.ID))));
+					brain.updateForward();
+					brain.displayBrain();
+					console.log("training interval done");
+					data.questions.shift();
+					data.answers.shift();
+				}
+			},200);
+
+
+
 		},
 		testInput: function(inputActivation)
 			{
@@ -348,7 +376,6 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ma
 
 			for(let i=0; i < brain.cellMatrix[ng].length; i++) //for the length of the next generation
 				{
-				console.log(cell);	
 				brain.cellMatrix[ng][i].setActivationWithIndex(cell.getValue(),i);
 			}
 				
@@ -561,11 +588,7 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ma
 				console.error(cell.value);
 				console.error("was values thrown into error");
 			}
-			console.log(error);
-			//this calls whatIreallyReallyWant eventaully
-			console.log(this.activations);
-			console.log(cell.activations);
-			console.log("was activations");
+	
 			let desiredObjectChange = 
 				{
 				ID:this.ID,
@@ -586,37 +609,27 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ma
 					this.activations.forEach(y=> (1/2)*(y+cActivations.next().value));
 					this.recalculateValue();
 				},
-				recalculateValue:function(debugItem)	
+				recalculateValue:function()	
 					{
-					console.log(this.value);
-					console.log(this);
-					console.log(debugItem)	
 					this.value = Sigmoid(arrayMultiply(this.weights, this.activations, this)+this.bias);
-					console.log(this.value);
 				},
 				nudge:function(value, rate, range)
 					{
-					console.log("nudging this value"+value);	
 					let rValue =  Sigmoid(value + Math.random(range.one, range.two)*(1/rate) / 2);
-					console.log("into this value"+rValue);
 					return rValue;
 				},
 				jiggle:function(item, learningRate, range, type)
 					{
 					desiredObjectChange.recalculateValue(item);
 					let last = {error: 1/2 *Math.pow((answerValue-desiredObjectChange.value),2)};
-					console.log("Initial values", desiredObjectChange.value, last.error);
 					for(let i=1; i<learningRate; i++)
 						{
 						let old = item;	
-						console.log("initial item is:"+item);
 						let change = this.nudge(item, learningRate, range);
 						item = change;
 						if(type =="bias")
 							{
-							console.log(desiredObjectChange.bias);	
 							desiredObjectChange.bias = item;
-							console.log(desiredObjectChange.bias);	
 						}
 						else if(type == "activations")
 							{
@@ -626,12 +639,8 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ma
 							{
 							desiredObjectChange.weights[desiredObjectChange.weights.indexOf(item)] = item;	
 						}
-						console.log("item after assignment is:"+ item);
-						console.dir(desiredObjectChange);
 						desiredObjectChange.recalculateValue(item);
-						console.dir(desiredObjectChange);
 						let current = {error:1/2 * Math.pow(answerValue-desiredObjectChange.value ,2)};
-						console.log("New values", desiredObjectChange.value, current.error);
 						let errorResult = compareSmallnumbers('isSmaller', current.error, last.error);
 						if(!errorResult)
 							{
@@ -641,7 +650,6 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ma
 							{
 							last.error = current.error;
 						}
-						console.log("Final values", desiredObjectChange.value, current.error, last.error);
 					}
 				}
 			}
@@ -693,8 +701,6 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ma
 	cell.setId();
 	if(cell.generation > 0)
 		{
-		console.log(cell);	
-		console.log(matrix);	
 		let lastGen = matrix[cell.generation-1];
 		for(let r=0;r<lastGen.length;r++)
 			{
