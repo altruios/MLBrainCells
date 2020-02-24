@@ -60,8 +60,10 @@ const cellArrayDiv= document.createElement('div');
 cellArrayDiv.setAttribute('class',"cellArray");
 body.appendChild(cellArrayDiv);
 const ctx = canvas.getContext('2d');
-const width = canvas.width = window.innerWidth/2	;
-const height = canvas.height = window.innerHeight;
+canvas.width = window.innerWidth - 50;
+canvas.height = window.innerHeight - 20;
+const width = canvas.width;
+const height = canvas.height;
 const uniuqeKey=makeID();
 const colorR = colorRotate();
 const positiveRange = {one:0,two:1};
@@ -73,10 +75,16 @@ function createBrain(cellColumnCount, cellRowCount, options)
 	{
 	var cellRow = cellRowCount;
 	var cellColumn = cellColumnCount;
-	const offSetY =  35;	
-	const offSetX =   32;
-	const scaleValX = width/cellColumnCount - offSetX;
-	const scaleValY = height/(cellRowCount)-offSetY;
+	const offSetY =  70;	
+	const offSetX =  60;
+	const cellSize = 10;
+	console.log(cellRowCount/width);
+
+
+	const scaleValX = (width/cellRowCount) + offSetX;
+	console.log(scaleValX);
+
+	const scaleValY = height/(cellRowCount) - offSetY;
 	const cellMatrix = [];
 	for(let i=0; cellColumnCount>=i;i++)
 		{
@@ -159,9 +167,6 @@ function createBrain(cellColumnCount, cellRowCount, options)
 				else
 					{
 					brain.displayBrain();
-					ctx.font = "50px";
-					ctx.fillText("training interval"+data.questions.length,100,100);	
-
 					brain.attachInputLayer(data.questions[0]);	
 					let direction = brain.determinDirection(data.answers[0]);
 					brain.cellMatrix.forEach(cellArray => cellArray.forEach(cell=> cell.adjust(direction.find(x=>x.ID === cell.ID))));
@@ -244,14 +249,14 @@ function createBrain(cellColumnCount, cellRowCount, options)
 		let previousGeneration = cellMatrix.indexOf(cellArray)-1;
 		if(thisGen == cellMatrix.length-1)
 			{	
+			console.log("answer row!");
+			console.dir(cellArray);	
 			let answerCount = options.answers.length;
 			for(let i = 0;i<answerCount;i++)
 				{
-				let x = 0;	
-				x+=brain.scaleValX;
-				x*=thisGen;
-				x+=brain.offSetX;
-				let y = (i*brain.scaleValY)+brain.offSetY;
+				console.log("this gen is:"+thisGen);	
+				let x =  i*(width/3) + brain.offSetX*2;
+				let y = height - 120;
 				let cellPosition = {x:x, y:y};	
 				console.log("cell answers have:::");
 
@@ -266,12 +271,7 @@ function createBrain(cellColumnCount, cellRowCount, options)
 		else
 			{
 			for(let i=0; i<brain.cellRows; i++)
-				{
-				let x = 0;
-				x+=brain.scaleValX;
-				x*=thisGen;
-				x+=brain.offSetX;
-
+				{let x = brain.scaleValX*thisGen+brain.offSetX;
 				let cellPosition = {x:x, y:(i*brain.scaleValY)+brain.offSetY};	
 			
 				if(cellMatrix.indexOf(cellArray) == 0)
@@ -379,7 +379,29 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ma
 				brain.cellMatrix[ng][i].setActivationWithIndex(cell.getValue(),i);
 			}
 				
+		},
+		clearSelf:function()
+			{
+			ctx.beginPath();
+			ctx.fillStyle = "white";	
+		 	ctx.arc(cell.position.x, cell.position.y, cell.getRadius(), 0, 2 * Math.PI, false);
+			ctx.stroke();
+		},
+		drawChangeIcon: async function()
+			{
+			let change = await window.setTimeout(()=>{
+			ctx.beginPath();
+			ctx.rect(cell.position.x-2, cell.position.y-2, 10, 10);
+			ctx.fillStyle = "red";
+			ctx.fill();
+			},10);
+
 			
+		},
+		clearChangeIcon:function(){
+			window.clearInterval(this.changeIcon);
+			cell.clearSelf();
+			cell.drawSelf();
 		},
 		drawSelf: function()
 			{
@@ -434,10 +456,8 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ma
 				ctx.lineTo(target.x+target.radius , target.y);
 				ctx.stroke();
 			}
-
-
-
 		},
+
 		textAnswer:function()
 			{
 			ctx.fillText("amAnswer", cell.position.x,cell.position.y);		
@@ -580,6 +600,7 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ma
 		},
 		whatIwant:function(answerValue, returnArray)
 			{	
+			this.drawChangeIcon();	
 			let error = (1/2)*Math.pow(answerValue-cell.value, 2);
 			if(error == NaN)
 				{
@@ -634,6 +655,7 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ma
 						else if(type == "activations")
 							{
 							desiredObjectChange.activations[desiredObjectChange.activations.indexOf(item)] = item;
+
 						}
 						else if(type == "weights")
 							{
@@ -650,9 +672,32 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ma
 							{
 							last.error = current.error;
 						}
+						window.setTimeout(function(){
+						desiredObjectChange.drawChange(desiredObjectChange.ID);
+										},16);	
+
 					}
-				}
+
+				},
+				drawChange: function(cellID)
+					{
+
+					brain.cellMatrix.forEach((cellArray)=>
+						{ 
+						let changedCell =  cellArray.find(x=> x.ID === cellID);
+						if(changedCell)
+							{
+							console.log(changedCell);	
+							changedCell.clearSelf();	
+							changedCell.drawSelf();
+							changedCell.targets.forEach(target=> changedCell.drawLineToTarget(target, brain.cellMatrix[Math.max(0, changedCell.generation-1)].indexOf(target)));
+						}
+					});
+			
+				},
+				
 			}
+
 			desiredObjectChange.jiggle(bias, 4, fullRange, "bias");
 			desiredObjectChange.activations.forEach(activation=>desiredObjectChange.jiggle(activation,4, positiveRange, "activations"));
 			desiredObjectChange.weights.forEach(weight=>desiredObjectChange.jiggle(weight,4,fullRange, "weights"));
@@ -664,7 +709,7 @@ function MakeNewCell(activations, weights, bias, generation, order, position, ma
 			else{
 				combineObject.combine(desiredObjectChange);
 			}		
-			
+			this.clearChangeIcon();
 			//that was this object - simple stuff, now we need to call this function
 	
 			if(Array.isArray(cell.lastGenerationTargetKeys) && cell.lastGenerationTargetKeys.length)
