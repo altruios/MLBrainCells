@@ -1,0 +1,7 @@
+refactoring into something more usable.
+finish out the cortex class, and brain class
+make testing data
+test the cortex mechanics
+test service workers for continous input.
+test mechanics for retraining cortex by ego
+test ways to read hard drive / self process for id.
